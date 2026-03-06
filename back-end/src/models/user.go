@@ -34,3 +34,8 @@ type User struct {
 	CreatedAt string `db:"created_at"`
 	UpdatedAt string `db:"updated_at"`
 }
+
+type UserContext struct {
+	ID       int
+	Username string
+}

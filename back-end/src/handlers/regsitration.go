@@ -6,6 +6,7 @@ import (
 	"social-network/src/utils"
 	"social-network/src/services"
 	"os"
+	"social-network/src/middleware"
 )
 
 
@@ -14,7 +15,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
+ if(	middleware.GetCurrentUser(r) != nil){
+	utils.SendError(w, "Already authenticated", http.StatusForbidden)
+	return
+ }
 
 	var regReq dto.RegisterRequest
 
