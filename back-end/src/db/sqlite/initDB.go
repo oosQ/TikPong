@@ -44,8 +44,8 @@ _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL DEFAULT 'user',    -- user | admin | moderator
   status TEXT CHECK (status IN ('online', 'offline')) DEFAULT 'offline',
 
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );`)
 	if err != nil {
 		log.Fatal("Error creating users table:", err)

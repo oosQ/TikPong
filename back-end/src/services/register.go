@@ -6,7 +6,7 @@ import (
 	"social-network/src/repo"
 	"social-network/src/utils"
 	"social-network/src/validator"
-	"strconv"
+	"time"
 
 )
 
@@ -32,7 +32,7 @@ func RegisterUser(req dto.RegisterRequest) (string, error) {
 	
 	role := models.RoleUser
 	status := models.StatusOffline
-	now := utils.CurrentTimestamp()
+	now := time.Now().Unix()
 	
 	user := models.User{
 		ID:           userID,
@@ -50,8 +50,8 @@ func RegisterUser(req dto.RegisterRequest) (string, error) {
 		IsPublic:  req.IsPublic,
 		Role:      role,
 		Status:    status,
-		CreatedAt: strconv.FormatInt(now, 10),
-		UpdatedAt: strconv.FormatInt(now, 10),
+		CreatedAt: time.Unix(now, 0),
+		UpdatedAt: time.Unix(now, 0),
 	}
 	err = repo.RegisterUser(user)
 	if err != nil {
