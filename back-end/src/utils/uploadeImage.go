@@ -8,11 +8,14 @@ import (
 )
 
 func SaveUploadedImage(r *http.Request) (string, error) {
+	var imagePath string
 
 	file, header, err := r.FormFile("avatar_path")
 	if err != nil {
-		return "", errors.New("failed to get uploaded file")
+			imagePath = "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg"
+   return imagePath, nil
 	}
+	
 
 	defer file.Close()
 
@@ -40,7 +43,7 @@ func SaveUploadedImage(r *http.Request) (string, error) {
 	}
 
 	filename := imageID + "_" + header.Filename
-	imagePath := "./uploads/avatars/" + filename
+	imagePath = "./uploads/avatars/" + filename
 
 	outFile, err := os.Create(imagePath)
 	if err != nil {
@@ -55,6 +58,7 @@ func SaveUploadedImage(r *http.Request) (string, error) {
 	}
 		return "", errors.New("failed to copy image file")
 	}
+
 
 	return imagePath, nil
 }
