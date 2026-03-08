@@ -55,8 +55,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(sessionExpiration.Sub(time.Now()).Seconds()),
 	})
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	utils.SendSuccess(w, dto.LoginResponse{
 		UserID:    userID,
 		ExpiresAt: sessionExpiration.Unix(),
