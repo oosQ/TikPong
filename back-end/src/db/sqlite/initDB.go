@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"time"
-	_ "github.com/mattn/go-sqlite3"
 
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var DB *sql.DB
@@ -22,12 +22,11 @@ func InitDB() {
 	}
 
 	createTables()
-	go cleanupExpiredSessions() 
+	go cleanupExpiredSessions()
 }
 
-
 func createTables() {
-_, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
+	_, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,             
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
@@ -51,11 +50,9 @@ _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
 		log.Fatal("Error creating users table:", err)
 	}
 
-		// Sessions table
 	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id TEXT NOT NULL UNIQUE,
-        user_id INTEGER NOT NULL,
+        id TEXT NOT NULL UNIQUE PRIMARY KEY,
+        user_id TEXT NOT NULL,
         expires_at DATETIME NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );`)
@@ -63,11 +60,10 @@ _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
 		log.Fatal("Error creating sessions table:", err)
 	}
 
-	}
+}
 
-
-	func cleanupExpiredSessions() {
-	ticker := time.NewTicker(1 * time.Hour) 
+func cleanupExpiredSessions() {
+	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
 	for range ticker.C {

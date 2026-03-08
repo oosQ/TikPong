@@ -4,9 +4,9 @@ const (
 	CheckSessionQuery = `
 		SELECT u.id, u.nickname
 		FROM users u JOIN sessions s ON u.id = s.user_id
-		WHERE s.session_id = ? AND s.expires_at > ?
+		WHERE s.id = ? AND s.expires_at > ?
 	`
-	CreateSessionQuery = `INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)`
+	CreateSessionQuery = `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`
 	DeleteOldSessionsQuery = `DELETE FROM sessions WHERE user_id = ?`
     CheckCredentialsQuery = `SELECT id, password_hash FROM users WHERE nickname = ? OR email = ?`
 )
