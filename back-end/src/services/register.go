@@ -5,19 +5,12 @@ import (
 	"social-network/src/models"
 	"social-network/src/repo"
 	"social-network/src/utils"
-	"social-network/src/validator"
 	"time"
 
 )
 
 func RegisterUser(req dto.RegisterRequest) (string, error) {
 
-
-	if err := validator.ValidateRegister(req); err != nil {
-		return "", err
-	}
-
-	
 	userID, err := utils.GenerateUUID()
 	if err != nil {
 		return "", err

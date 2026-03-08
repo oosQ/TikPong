@@ -7,6 +7,7 @@ import (
 	"social-network/src/services"
 	"os"
 	"social-network/src/middleware"
+	"social-network/src/validator"
 )
 
 
@@ -31,6 +32,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	regReq.AboutMe = r.FormValue("about_me")
 	regReq.IsPublic = r.FormValue("is_public") == "true"
 
+	
+
  imagePath, err := utils.SaveUploadedImage(r);
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
@@ -39,6 +42,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 regReq.AvatarPath = imagePath
 
+if err := validator.ValidateRegister(regReq); err != nil {
+		utils.SendError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
     userID, err := services.RegisterUser(regReq)
 	if err != nil {
 		if imagePath != "" {
