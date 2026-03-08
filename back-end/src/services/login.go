@@ -1,11 +1,12 @@
 package services
 
 import (
+	"errors"
+	"fmt"
 	"social-network/src/dto"
 	"social-network/src/models"
 	"social-network/src/repo"
 	"social-network/src/utils"
-	"errors"
 	"time"
 )
 
@@ -17,8 +18,19 @@ func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
 		return "", "", time.Time{}, err
 	}
 
-	if !utils.CheckPasswordHash(req.Password, user.PasswordHash) {
+	fmt.Printf("PasswordHash=%s\n", req.Password)
+	fmt.Printf("UserPasswordHash=%s\n", user.PasswordHash)
+	
+	isPasswordValid := utils.CheckPasswordHash(req.Password, user.PasswordHash)
+	fmt.Printf("IsPasswordValid=%v\n", isPasswordValid)
+	
+	if !isPasswordValid {
 		return "", "", time.Time{}, errors.New("invalid credentials")
+	}
+
+	err = repo.DeleteOldSessions(user.ID)
+	if err != nil {
+		return "", "", time.Time{}, err
 	}
 
 	sessionID, err := utils.GenerateSessionID()
