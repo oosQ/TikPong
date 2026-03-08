@@ -38,7 +38,7 @@ func GetCurrentUser(r *http.Request) *models.User {
 	}
 
 	var user models.User
-	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname, &user.Email)
+	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil

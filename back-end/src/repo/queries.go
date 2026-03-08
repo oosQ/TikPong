@@ -2,15 +2,14 @@ package repo
 
 const (
 	CheckSessionQuery = `
-		SELECT u.id, u.nickname, u.email
+		SELECT u.id, u.nickname
 		FROM users u JOIN sessions s ON u.id = s.user_id
 		WHERE s.session_id = ? AND s.expires_at > ?
 	`
-	DeleteOldSessionsQuery = `DELETE FROM sessions WHERE user_id = ?`
 	CreateSessionQuery = `INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)`
-	CheckCredentialsQuery = `SELECT id, password_hash, email FROM users WHERE nickname = ? OR email = ?`
+	DeleteOldSessionsQuery = `DELETE FROM sessions WHERE user_id = ?`
+    CheckCredentialsQuery = `SELECT id, password_hash FROM users WHERE nickname = ? OR email = ?`
 )
-
 const (
 	RegisterUserQuery = `INSERT INTO users (
 id,
