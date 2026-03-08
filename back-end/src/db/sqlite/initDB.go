@@ -57,7 +57,6 @@ _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
         session_id TEXT NOT NULL UNIQUE,
         user_id INTEGER NOT NULL,
         expires_at DATETIME NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );`)
 	if err != nil {
