@@ -18,3 +18,12 @@ type RegisterRequest struct {
 type RegisterResponse struct {
 	UserID  string    `json:"user_id"`
 }
+
+type LoginRequest struct {
+	NicknameOrEmail string `json:"nickname_or_email" validate:"required"`
+	Password        string `json:"password" validate:"required"`
+}
+type LoginResponse struct {
+	UserID    string `json:"user_id"`
+	ExpiresAt int64  `json:"expires_at"`
+}
