@@ -9,8 +9,9 @@ import (
 func Serverinit() {
 	database.InitDB()
 	defer database.DB.Close()
-	
-	http.HandleFunc("/api/register", handlers.RegisterHandler)
+
+	http.HandleFunc("/api/auth/users", handlers.RegisterHandler)
+	http.HandleFunc("/api/auth/sessions", handlers.LoginHandler)
 
 	log.Println("Server starting on: http://localhost:8433/")
     err := http.ListenAndServe(":8433", nil); if err != nil {
