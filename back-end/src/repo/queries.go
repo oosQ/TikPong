@@ -8,6 +8,7 @@ const (
 	`
 	CreateSessionQuery = `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`
 	DeleteOldSessionsQuery = `DELETE FROM sessions WHERE user_id = ?`
+	DeleteSessionQuery = `DELETE FROM sessions WHERE id = ?`
     CheckCredentialsQuery = `SELECT id, password_hash FROM users WHERE nickname = ? OR email = ?`
 )
 const (
