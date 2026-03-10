@@ -61,3 +61,18 @@ func DeleteSession(sessionID string) error {
 	_, err := database.DB.Exec(DeleteSessionQuery, sessionID)
 	return err
 }
+
+
+func UpdateUserPassword(userID string, newPasswordHash string) error {
+	_, err := database.DB.Exec(UpdatePasswordQuery, newPasswordHash, userID)
+	return err
+}
+
+func GetUserPasswordHash(userID string) (string, error) {
+	var passwordHash string
+	err := database.DB.QueryRow(`SELECT password_hash FROM users WHERE id = ?`, userID).Scan(&passwordHash)
+	if err != nil {
+		return "", err
+	}
+	return passwordHash, nil
+}

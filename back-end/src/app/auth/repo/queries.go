@@ -31,5 +31,6 @@ updated_at
 
 	CheckEmailExistsQuery = `SELECT COUNT(*) FROM users WHERE email = ?`
 	CheckNicknameExistsQuery = `SELECT COUNT(*) FROM users WHERE nickname = ?`
+	UpdatePasswordQuery = `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+	CheckCurrentPasswordQuery = `SELECT COUNT(*) FROM users WHERE id = ? AND password_hash = ?`
 )
-
