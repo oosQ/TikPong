@@ -11,8 +11,8 @@ import (
 )
 
 
-func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
 		utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -21,19 +21,19 @@ func ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	var req dto.ResetPasswordRequest
+	var req dto.ChangePasswordRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		utils.SendError(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
    
-	if err := validator.ValidateResetPassword(req.ConfirmPassword, req.NewPassword); err != nil {
+	if err := validator.ValidateChangePassword(req.ConfirmPassword, req.NewPassword); err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = services.ResetPassword(userCtx.ID,req.NewPassword)
+	err = services.ChangePassword(userCtx.ID,req.NewPassword)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
