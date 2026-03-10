@@ -39,6 +39,8 @@ type User struct {
 }
 
 type UserContext struct {
-	ID       int
-	Username string
-}
+	ID 	 string `json:"id"`
+	AvatarPath    string `json:"avatar_path"`
+	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
+ }
