@@ -59,7 +59,15 @@ func createTables() {
 	if err != nil {
 		log.Fatal("Error creating sessions table:", err)
 	}
-
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );`)
+	if err != nil {
+		log.Fatal("Error creating password reset tokens table:", err)
+	}
 }
 
 func cleanupExpiredSessions() {
