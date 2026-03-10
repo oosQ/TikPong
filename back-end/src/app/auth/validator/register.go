@@ -35,12 +35,8 @@ func ValidateRegister(req dto.RegisterRequest) error {
 		return ErrEmailInvalid
 	}
 
-	// required: password
-	if strings.TrimSpace(req.Password) == "" {
-		return ErrPasswordRequired
-	}
-	if len(req.Password) < 8 {
-		return ErrPasswordTooShort
+	if err := ValidatePassword(req.Password); err != nil {
+		return err
 	}
 
 	// required: first_name

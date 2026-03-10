@@ -26,9 +26,9 @@ func ValidateLogin(req dto.LoginRequest) error {
         return ErrNicknameOrEmailInvalid
     }
     
-    if strings.TrimSpace(req.Password) == "" {
-        return ErrPasswordRequired
-    }
+   	if err := ValidatePassword(req.Password); err != nil {
+		return err
+	}
     
     return nil
 }
