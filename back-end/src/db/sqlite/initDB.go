@@ -30,7 +30,7 @@ func createTables() {
   id TEXT PRIMARY KEY,             
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-
+  verified_email INTEGER NOT NULL DEFAULT 0,
   first_name TEXT NOT NULL,
   last_name  TEXT NOT NULL,
   date_of_birth TEXT NOT NULL,      
@@ -67,6 +67,16 @@ func createTables() {
     );`)
 	if err != nil {
 		log.Fatal("Error creating password reset tokens table:", err)
+	}
+
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS email_verification_tokens (
+		user_id TEXT NOT NULL,
+		token TEXT NOT NULL UNIQUE,
+		expires_at DATETIME NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);`)
+	if err != nil {
+		log.Fatal("Error creating email verification tokens table:", err)
 	}
 }
 
