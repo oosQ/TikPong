@@ -115,12 +115,12 @@ func DeleteSessionsByUserID(userID string) error {
 
 func StoreEmailVerificationToken(userID string, token string, expiresAt time.Time) error {
 	_, err := database.DB.Exec(`INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)`, userID, token, expiresAt)
-	return err 
+	return err
 }
 
 func GetUserIDByEmailVerificationToken(token string) (string, error) {
 	var userID string
-	err := database.DB.QueryRow(`SELECT user_id FROM email_verification_tokens WHERE token = ? AND expires_at > ?`, token, time.Now()).Scan(&userID)	
+	err := database.DB.QueryRow(`SELECT user_id FROM email_verification_tokens WHERE token = ? AND expires_at > ?`, token, time.Now()).Scan(&userID)
 	if err != nil {
 		return "", err
 	}
@@ -144,4 +144,12 @@ func MarkEmailAsVerified(userID string) error {
 func RemoveVerificationToken(userID string) error {
 	_, err := database.DB.Exec(`DELETE FROM email_verification_tokens WHERE user_id = ?`, userID)
 	return err
+}
+func IsEmailVerified(userID string) (bool, error) {
+	var verified int
+	err := database.DB.QueryRow(`SELECT COALESCE(MAX(verified_email), 0) FROM users WHERE id = ?`, userID).Scan(&verified)
+	if err != nil {
+		return false, err
+	}
+	return verified == 1, nil
 }

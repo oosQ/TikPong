@@ -14,7 +14,7 @@ func Init() {
 	http.HandleFunc("/api/auth/change-password",middleware.RequireAuth(handlers.ChangePasswordHandler))
 	http.HandleFunc("/api/auth/forgot-password", handlers.ForgotPasswordHandler)
     http.HandleFunc("/api/auth/reset-password", handlers.ResetPasswordWithTokenHandler)
-	http.HandleFunc("/api/auth/send-verification-email", handlers.SendVerificationEmailHandler)
+	http.HandleFunc("/api/auth/send-verification-email", middleware.RequireAuth(handlers.SendVerificationEmailHandler))
 	http.HandleFunc("/api/auth/verify-email", handlers.VerifyEmailHandler)
 	http.HandleFunc("/api/auth/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {

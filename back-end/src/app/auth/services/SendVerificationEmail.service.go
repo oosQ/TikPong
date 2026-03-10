@@ -11,7 +11,14 @@ func SendVerificationEmail(email string) error {
 	if err != nil {
 		return ErrEmailNotFound
 	}
-
+    IsVerified, err := repo.IsEmailVerified(userID)
+	if err != nil {
+		return errors.New("Failed to check email verification status")
+	}
+	if IsVerified {
+		return errors.New("Email is already verified")
+	}
+	
 	verificationToken, err := utils.GenerateUUID()
 	if err != nil {
 		return errors.New("Failed to generate email verification token")
