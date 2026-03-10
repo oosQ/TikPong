@@ -27,3 +27,10 @@ type LoginResponse struct {
 	UserID    string `json:"user_id"`
 	ExpiresAt int64  `json:"expires_at"`
 }
+
+type GetUserResponse struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	AvatarPath string `json:"avatar_path"`
+	Nickname string `json:"nickname"`
+}
