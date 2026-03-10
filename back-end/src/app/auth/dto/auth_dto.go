@@ -35,11 +35,16 @@ type GetUserResponse struct {
 	Nickname string `json:"nickname"`
 }
 
-type ResetPasswordRequest struct {
+type ChangePasswordRequest struct {
 	ConfirmPassword string `json:"confirm_password" validate:"required"`
 	NewPassword     string `json:"new_password" validate:"required,min=8"`
 }
 
 type ForgotPasswordRequest struct {
 	Email string `json:"email" validate:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	ConfirmPassword string `json:"confirm_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=8"`
 }
