@@ -21,9 +21,9 @@ func ValidatePassword(password string) error {
 	return nil
 }
 
-func ValidateResetPassword(newPassword string, confirmPassword string) error {
+func ValidateChangePassword(newPassword string, confirmPassword string) error {
 	if newPassword != confirmPassword {
-		return errors.New("P2asswords do not match")
+		return errors.New("Passwords do not match")
 	}
 	if err := ValidatePassword(newPassword); err != nil {
 		return err
