@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 	"social-network/src/middleware"
-	"social-network/src/services"
+	"social-network/src/app/auth/services"
 	"social-network/src/utils"
 )
 

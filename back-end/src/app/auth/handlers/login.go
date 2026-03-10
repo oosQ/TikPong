@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
 	"social-network/src/utils"
-	"social-network/src/services"
+	"social-network/src/app/auth/services"
 	"social-network/src/middleware"
-	"social-network/src/validator"
+	"social-network/src/app/auth/validator"
 	"time"
 )
 

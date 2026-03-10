@@ -2,7 +2,7 @@ package validator
 import (
 	"errors"
 	"strings"
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
     "regexp"
 )
 var (

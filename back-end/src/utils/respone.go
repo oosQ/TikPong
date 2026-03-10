@@ -2,9 +2,19 @@ package utils
 
 import (
 	"encoding/json"
-	"social-network/src/dto"
 	"net/http"
 )
+type SuccessResponse struct {
+	Success bool        `json:"success"`
+	Data    any `json:"data,omitempty"`
+	Message string      `json:"message,omitempty"`
+}
+
+type ErrorResponse struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error"`
+	Code    int    `json:"code"`
+}
 
 
 func SendJSON(w http.ResponseWriter, data any, statusCode int) {
@@ -15,7 +25,7 @@ func SendJSON(w http.ResponseWriter, data any, statusCode int) {
 
 
 func SendSuccess(w http.ResponseWriter, data any, message string) {
-	response := dto.SuccessResponse{
+	response := SuccessResponse{
 		Success: true,
 		Data:    data,
 		Message: message,
@@ -25,7 +35,7 @@ func SendSuccess(w http.ResponseWriter, data any, message string) {
 
 
 func SendError(w http.ResponseWriter, message string, statusCode int) {
-	response := dto.ErrorResponse{
+	response := ErrorResponse{
 		Success: false,
 		Error:   message,
 		Code:    statusCode,

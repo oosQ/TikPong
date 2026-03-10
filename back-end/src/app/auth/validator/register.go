@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
 )
 
 var (

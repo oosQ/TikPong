@@ -1,25 +1,24 @@
 package services
 
 import (
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
+	"social-network/src/app/auth/repo"
 	"social-network/src/models"
-	"social-network/src/repo"
 	"social-network/src/utils"
 	"time"
-
 )
 
-func RegisterUser(req dto.RegisterRequest) (string, error) {
+func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 
 	userID, err := utils.GenerateUUID()
 	if err != nil {
-		return "", err
+		return "", err ,500
 	}
 
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return "", err
+		return "", err ,500
 	}
 
 	
@@ -48,7 +47,7 @@ func RegisterUser(req dto.RegisterRequest) (string, error) {
 	}
 	err = repo.RegisterUser(user)
 	if err != nil {
-		return "", err
+	return "", err , 409
 	}
-	return user.ID, nil
+	return user.ID, nil, 201
 }

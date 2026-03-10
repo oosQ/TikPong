@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 	"social-network/src/models"
-	"social-network/src/repo"
+	"social-network/src/app/auth/repo"
 )
 
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {

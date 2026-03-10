@@ -2,9 +2,9 @@ package services
 
 import (
 	"errors"
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
 	"social-network/src/models"
-	"social-network/src/repo"
+	"social-network/src/app/auth/repo"
 	"social-network/src/utils"
 	"time"
 )

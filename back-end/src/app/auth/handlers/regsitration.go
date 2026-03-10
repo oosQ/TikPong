@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"social-network/src/dto"
+	"social-network/src/app/auth/dto"
 	"social-network/src/utils"
-	"social-network/src/services"
+	"social-network/src/app/auth/services"
 	"os"
 	"social-network/src/middleware"
-	"social-network/src/validator"
+	"social-network/src/app/auth/validator"
 )
 
 
@@ -47,12 +47,12 @@ if err := validator.ValidateRegister(regReq); err != nil {
 		return
 	}
 	
-    userID, err := services.RegisterUser(regReq)
+    userID, err , statusCode := services.RegisterUser(regReq)
 	if err != nil {
 		if imagePath != "" {
 		os.Remove(imagePath)
 	}
-		utils.SendError(w, err.Error(), http.StatusBadRequest)
+		utils.SendError(w, err.Error(), statusCode)
 		return
 	}
 

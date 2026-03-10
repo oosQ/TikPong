@@ -1,7 +1,7 @@
 package services
 
 import (
-	"social-network/src/repo"
+	"social-network/src/app/auth/repo"
 )
 
 func LogoutUser(sessionID string) error {
