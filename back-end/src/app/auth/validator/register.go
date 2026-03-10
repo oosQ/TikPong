@@ -2,7 +2,6 @@ package validator
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 	"time"
 
@@ -23,22 +22,18 @@ var (
 	ErrAvatarPathInvalid   = errors.New("avatar_path must be a valid path")
 )
 
-var emailRegex = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+
 
 func ValidateRegister(req dto.RegisterRequest) error {
 	// required: email
-	req.Email = strings.TrimSpace(req.Email)
-	if req.Email == "" {
-		return ErrEmailRequired
-	}
-	if !emailRegex.MatchString(req.Email) {
-		return ErrEmailInvalid
+	if err := ValidateEmail(req.Email); err != nil {
+		return err
 	}
 
 	if err := ValidatePassword(req.Password); err != nil {
 		return err
 	}
-
+     
 	// required: first_name
 	req.FirstName = strings.TrimSpace(req.FirstName)
 	if req.FirstName == "" {
