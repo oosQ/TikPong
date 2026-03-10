@@ -4,6 +4,7 @@ import (
 	"errors"
 	database "social-network/src/db/sqlite"
 	"social-network/src/models"
+	"time"
 )
 
 func RegisterUser(user models.User) error {
@@ -62,7 +63,6 @@ func DeleteSession(sessionID string) error {
 	return err
 }
 
-
 func UpdateUserPassword(userID string, newPasswordHash string) error {
 	_, err := database.DB.Exec(UpdatePasswordQuery, newPasswordHash, userID)
 	return err
@@ -75,4 +75,32 @@ func GetUserPasswordHash(userID string) (string, error) {
 		return "", err
 	}
 	return passwordHash, nil
+}
+
+func GetUserIDByEmail(email string) (string, error) {
+	var userID string
+	err := database.DB.QueryRow(`SELECT id FROM users WHERE email = ?`, email).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
+}
+
+func StorePasswordResetToken(userID string, token string, expiresAt time.Time) error {
+	_, err := database.DB.Exec(`INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)`, userID, token, expiresAt)
+	return err
+}
+
+func GetUserIDByResetToken(token string) (string, error) {
+	var userID string
+	err := database.DB.QueryRow(`SELECT user_id FROM password_reset_tokens WHERE token = ? AND expires_at > ?`, token, time.Now()).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
+}
+
+func RemoveUsertoken(userID string) error {
+	_, err := database.DB.Exec(`DELETE FROM password_reset_tokens WHERE user_id = ?`, userID)
+	return err
 }
