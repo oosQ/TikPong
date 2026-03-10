@@ -23,11 +23,6 @@ func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
 		return "", "", time.Time{}, errors.New("invalid credentials")
 	}
 
-	err = repo.DeleteOldSessions(user.ID)
-	if err != nil {
-		return "", "", time.Time{}, err
-	}
-
 	sessionID, err := utils.GenerateSessionID()
 	if err != nil {
 		return "", "", time.Time{}, err

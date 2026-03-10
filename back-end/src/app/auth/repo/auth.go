@@ -53,10 +53,6 @@ func CreateSession(session models.Session) error {
 	return err
 }
 
-func DeleteOldSessions(userID string) error {
-	_, err := database.DB.Exec(DeleteOldSessionsQuery, userID)
-	return err
-}
 
 func DeleteSession(sessionID string) error {
 	_, err := database.DB.Exec(DeleteSessionQuery, sessionID)
