@@ -25,10 +25,11 @@ email,
    is_public,
     role,
    status,
+   date_of_birth,
     created_at,
 	 updated_at
 
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)`
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?)`
 
 	CheckEmailExistsQuery     = `SELECT COUNT(*) FROM users WHERE email = ?`
 	CheckNicknameExistsQuery  = `SELECT COUNT(*) FROM users WHERE nickname = ?`

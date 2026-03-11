@@ -25,7 +25,10 @@ func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 	role := models.RoleUser
 	status := models.StatusOffline
 	now := time.Now().Unix()
-	
+	 dateOfBirth, err := time.Parse("2006-01-02", req.DateOfBirth)
+	if err != nil {
+		return "", err ,400
+	}
 	user := models.User{
 		ID:           userID,
 		Email:        req.Email,
@@ -34,6 +37,7 @@ func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
 		AvatarPath: req.AvatarPath,
+		DateOfBirth: dateOfBirth,
 
 		Nickname:   req.Nickname,
 		AboutMe:    req.AboutMe,

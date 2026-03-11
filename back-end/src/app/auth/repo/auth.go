@@ -21,7 +21,7 @@ func RegisterUser(user models.User) error {
 		 user.ID, user.Email, user.PasswordHash, 
 		user.VerifiedEmail, user.FirstName, user.LastName,
 		 user.AvatarPath, user.Nickname ,user.AboutMe,
-		  user.IsPublic, user.Role,user.Status, 
+		  user.IsPublic, user.Role,user.Status, user.DateOfBirth,
 		  user.CreatedAt,user.UpdatedAt ) 
 	if err != nil {
 		return err

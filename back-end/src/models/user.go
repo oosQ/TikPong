@@ -25,6 +25,7 @@ type User struct {
 	FirstName   string `db:"first_name"`
 	LastName    string `db:"last_name"`
 	AvatarPath string `db:"avatar_path"`
+	DateOfBirth  time.Time `db:"date_of_birth"`
 	
 	Nickname   string `db:"nickname"`
 	AboutMe    string `db:"about_me"`

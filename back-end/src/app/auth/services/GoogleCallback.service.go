@@ -41,6 +41,7 @@ func GoogleCallback(code string) (string, string, time.Time, error) {
 		if err != nil {
 			return "", "", time.Time{}, err
 		}
+
 	now := time.Now().Unix()
 
 		user := models.User{
@@ -57,6 +58,7 @@ func GoogleCallback(code string) (string, string, time.Time, error) {
 			Role:         models.RoleUser,
             AboutMe: "",
 			VerifiedEmail: true,
+			DateOfBirth:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 
 			Status:        models.StatusOnline,
 			CreatedAt: time.Unix(now, 0),

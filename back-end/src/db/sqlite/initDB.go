@@ -42,7 +42,7 @@ func createTables() {
   is_public INTEGER NOT NULL DEFAULT 1, -- 1 public, 0 private
   role TEXT NOT NULL DEFAULT 'user',    -- user | admin | moderator
   status TEXT CHECK (status IN ('online', 'offline')) DEFAULT 'offline',
- 
+  date_of_birth  DATETIME NOT NULL ,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );`)
