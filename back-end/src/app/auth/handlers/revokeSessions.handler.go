@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"social-network/src/middleware"
+	"social-network/src/models"
 	"social-network/src/app/auth/services"
 	"social-network/src/utils"
 )
@@ -12,12 +12,12 @@ func RevokeSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	user := middleware.GetCurrentUser(r)
-	if user == nil {
-		utils.SendError(w, "Not authenticated", http.StatusUnauthorized)
+	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
+	if !ok || userCtx == nil {
+		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	err := services.RevokeUserSessions(user.ID)
+	err := services.RevokeUserSessions(userCtx.ID)
 	if err != nil {
 		http.Error(w, "Failed to revoke sessions", http.StatusInternalServerError)
 		return
