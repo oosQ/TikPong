@@ -53,3 +53,20 @@ type SendVerificationEmailRequest struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type GoogleErrorResponse struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
+type UserInfoResponse struct {
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+}
