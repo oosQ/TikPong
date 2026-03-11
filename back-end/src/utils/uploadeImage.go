@@ -24,12 +24,15 @@ func SaveUploadedImage(r *http.Request) (string, error) {
 	}
 
 	buf := make([]byte, 512)
-	_, err = file.Read(buf)
-	if err != nil {
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
 		return "", errors.New("failed to read file")
 	}
+	if n == 0 {
+		return "", errors.New("empty file")
+	}
 
-	filetype := http.DetectContentType(buf)
+	filetype := http.DetectContentType(buf[:n])
 
 	if filetype != "image/jpeg" && filetype != "image/png" && filetype != "image/gif" {
 		return "", errors.New("only JPEG, PNG, GIF allowed")
@@ -59,6 +62,71 @@ func SaveUploadedImage(r *http.Request) (string, error) {
 		return "", errors.New("failed to copy image file")
 	}
 
+
+	return imagePath, nil
+}
+
+func SaveUploadedImageFromURL(imageURL string) (string, error) {
+	resp, err := http.Get(imageURL)
+	if err != nil {
+		return "", errors.New("failed to download image")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("failed to download image: " + resp.Status)
+	}
+
+	buf := make([]byte, 512)
+	n, err := io.ReadFull(resp.Body, buf)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return "", errors.New("failed to read image data")
+	}
+	if n == 0 {
+		return "", errors.New("empty image data")
+	}
+
+	filetype := http.DetectContentType(buf[:n])
+
+	if filetype != "image/jpeg" && filetype != "image/png" && filetype != "image/gif" {
+		return "", errors.New("only JPEG, PNG, GIF allowed")
+	}
+
+	imageID, err := GenerateUUID()
+	if err != nil {
+		return "", errors.New("failed to generate image ID")
+	}
+
+	ext := ".jpg"
+	if filetype == "image/png" {
+		ext = ".png"
+	} else if filetype == "image/gif" {
+		ext = ".gif"
+	}
+
+	filename := imageID + "_avatar" + ext
+	imagePath := "./uploads/avatars/" + filename
+	outFile, err := os.Create(imagePath)
+	if err != nil {
+		return "", errors.New("failed to create image file")
+	}
+	defer outFile.Close()
+
+	_, err = outFile.Write(buf[:n])
+	if err != nil {
+		if imagePath != "" {
+			os.Remove(imagePath)
+		}
+		return "", errors.New("failed to save image file")
+	}
+
+	_, err = io.Copy(outFile, resp.Body)
+	if err != nil {
+		if imagePath != "" {
+			os.Remove(imagePath)
+		}
+		return "", errors.New("failed to save image file")
+	}
 
 	return imagePath, nil
 }
