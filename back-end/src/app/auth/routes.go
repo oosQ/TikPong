@@ -8,7 +8,7 @@ import (
 )
 
 func Init() {
-	http.HandleFunc("/api/auth/users", handlers.RegisterHandler)
+	http.HandleFunc("/api/auth/register", handlers.RegisterHandler)
 	http.HandleFunc("/api/auth/me", middleware.RequireAuth(handlers.GetCurrentUserHandler))
 	http.HandleFunc("/api/auth/account", middleware.RequireAuth(handlers.DeleteAccountHandler))
 	http.HandleFunc("/api/auth/change-password",middleware.RequireAuth(handlers.ChangePasswordHandler))
@@ -17,6 +17,8 @@ func Init() {
 	http.HandleFunc("/api/auth/revoke-sessions", middleware.RequireAuth(handlers.RevokeSessionsHandler))
 	http.HandleFunc("/api/auth/send-verification-email", middleware.RequireAuth(handlers.SendVerificationEmailHandler))
 	http.HandleFunc("/api/auth/verify-email", handlers.VerifyEmailHandler)
+	http.HandleFunc("/api/auth/google/login", handlers.GoogleLoginHandler)
+	http.HandleFunc("/api/auth/google/callback", handlers.GoogleCallbackHandler)
 	http.HandleFunc("/api/auth/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			handlers.LoginHandler(w, r)
