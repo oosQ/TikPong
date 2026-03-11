@@ -17,7 +17,12 @@ func RegisterUser(user models.User) error {
 		return errors.New("email already exists")
 	}
 
-	_, err = database.DB.Exec(RegisterUserQuery, user.ID, user.Email, user.PasswordHash, user.FirstName, user.LastName, user.DateOfBirth, user.AvatarPath, user.Nickname, user.AboutMe, user.IsPublic, user.Role, user.Status, user.CreatedAt, user.UpdatedAt)
+	_, err = database.DB.Exec(RegisterUserQuery, 
+		 user.ID, user.Email, user.PasswordHash, 
+		user.VerifiedEmail, user.FirstName, user.LastName,
+		 user.AvatarPath, user.Nickname ,user.AboutMe,
+		  user.IsPublic, user.Role,user.Status, 
+		  user.CreatedAt,user.UpdatedAt ) 
 	if err != nil {
 		return err
 	}

@@ -6,31 +6,32 @@ const (
 		FROM users u JOIN sessions s ON u.id = s.user_id
 		WHERE s.id = ? AND s.expires_at > ?
 	`
-	CreateSessionQuery = `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`
+	CreateSessionQuery     = `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`
 	DeleteOldSessionsQuery = `DELETE FROM sessions WHERE user_id = ?`
-	DeleteSessionQuery = `DELETE FROM sessions WHERE id = ?`
-    CheckCredentialsQuery = `SELECT id, password_hash FROM users WHERE nickname = ? OR email = ?`
+	DeleteSessionQuery     = `DELETE FROM sessions WHERE id = ?`
+	CheckCredentialsQuery  = `SELECT id, password_hash FROM users WHERE nickname = ? OR email = ?`
 )
 const (
 	RegisterUserQuery = `INSERT INTO users (
-id,
+id, 
 email,
-password_hash,
-first_name,
-last_name,
-date_of_birth,
-avatar_path,
-nickname,
-about_me,
-is_public,
-role,
-status,
-created_at,
-updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+ password_hash,
+   verified_email,
+ first_name,
+  last_name,
+   avatar_path,
+  nickname, 
+  about_me,
+   is_public,
+    role,
+   status,
+    created_at,
+	 updated_at
 
-	CheckEmailExistsQuery = `SELECT COUNT(*) FROM users WHERE email = ?`
-	CheckNicknameExistsQuery = `SELECT COUNT(*) FROM users WHERE nickname = ?`
-	UpdatePasswordQuery = `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)`
+
+	CheckEmailExistsQuery     = `SELECT COUNT(*) FROM users WHERE email = ?`
+	CheckNicknameExistsQuery  = `SELECT COUNT(*) FROM users WHERE nickname = ?`
+	UpdatePasswordQuery       = `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	CheckCurrentPasswordQuery = `SELECT COUNT(*) FROM users WHERE id = ? AND password_hash = ?`
 )

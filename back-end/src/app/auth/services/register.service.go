@@ -33,15 +33,16 @@ func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
-		DateOfBirth: req.DateOfBirth,
-
 		AvatarPath: req.AvatarPath,
+
 		Nickname:   req.Nickname,
 		AboutMe:    req.AboutMe,
+		VerifiedEmail:  false,
 
 		IsPublic:  req.IsPublic,
 		Role:      role,
 		Status:    status,
+		
 		CreatedAt: time.Unix(now, 0),
 		UpdatedAt: time.Unix(now, 0),
 	}

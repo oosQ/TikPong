@@ -24,9 +24,8 @@ type User struct {
 
 	FirstName   string `db:"first_name"`
 	LastName    string `db:"last_name"`
-	DateOfBirth string `db:"date_of_birth"`
-
 	AvatarPath string `db:"avatar_path"`
+	
 	Nickname   string `db:"nickname"`
 	AboutMe    string `db:"about_me"`
 
@@ -34,6 +33,7 @@ type User struct {
 	Role     UserRole   `db:"role"`
 	Status   UserStatus `db:"status"`
 
+    VerifiedEmail bool      `db:"verified_email"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
