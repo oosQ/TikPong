@@ -2,7 +2,7 @@ package repo
 
 const (
 	CheckSessionQuery = `
-		SELECT u.id, u.nickname , u.email, u.avatar_path
+		SELECT u.id, u.nickname , u.email, u.avatar_path , u.role
 		FROM users u JOIN sessions s ON u.id = s.user_id
 		WHERE s.id = ? AND s.expires_at > ?
 	`

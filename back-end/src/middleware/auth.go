@@ -24,10 +24,12 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			Nickname:   user.Nickname,
 			Email:      user.Email,
 			AvatarPath: user.AvatarPath,
+			Role: 	user.Role,
 		}
 		next(w, r.WithContext(context.WithValue(r.Context(), "user_data", userCtx)))
 	}
 }
+
 
 func GetCurrentUser(r *http.Request) *models.User {
 	cookie, err := r.Cookie("session_id")
@@ -36,7 +38,7 @@ func GetCurrentUser(r *http.Request) *models.User {
 	}
 
 	var user models.User
-	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname , &user.Email, &user.AvatarPath)
+	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname , &user.Email, &user.AvatarPath , &user.Role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil
@@ -53,8 +55,9 @@ func GetUserFromContext(r *http.Request) *models.UserContext {
 	username := r.Context().Value("username")
 	email := r.Context().Value("email")
 	avatarPath := r.Context().Value("avatar_path")
+	role := r.Context().Value("role")
 
-	if userID == nil || username == nil || avatarPath == nil  || email == nil {
+	if userID == nil || username == nil || avatarPath == nil  || email == nil || role == nil {
 		return nil
 	}
 
@@ -63,5 +66,6 @@ func GetUserFromContext(r *http.Request) *models.UserContext {
 		Nickname: username.(string),
 		AvatarPath: avatarPath.(string),
 		Email: email.(string),
+		Role: role.(models.UserRole),
 	}
 }

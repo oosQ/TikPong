@@ -44,4 +44,5 @@ type UserContext struct {
 	AvatarPath    string `json:"avatar_path"`
 	Email    string `json:"email"`
 	Nickname string `json:"nickname"`
- }
+	Role     UserRole `json:"role"`
+}
