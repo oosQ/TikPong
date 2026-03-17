@@ -78,6 +78,41 @@ func createTables() {
 	if err != nil {
 		log.Fatal("Error creating email verification tokens table:", err)
 	}
+
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS posts (
+        id TEXT PRIMARY KEY,           
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+		image_path TEXT,
+		user_id TEXT NOT NULL,
+		privacy TEXT CHECK (privacy IN ('public', 'friends', 'private')) NOT NULL DEFAULT 'public',
+		is_edited INTEGER NOT NULL DEFAULT 0,
+		edited_at DATETIME DEFAULT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);`)
+	if err != nil {
+		log.Fatal("Error creating posts table:", err)
+	}
+
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS hashtags (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE
+    );`)
+	if err != nil {
+		log.Fatal("Error creating hashtags table:", err)
+	}
+
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS post_hashtags (
+        post_id TEXT NOT NULL,
+        hashtag_id TEXT NOT NULL,
+        PRIMARY KEY (post_id, hashtag_id),
+        FOREIGN KEY (post_id) REFERENCES posts(id),
+        FOREIGN KEY (hashtag_id) REFERENCES hashtags(id)
+    );`)
+	if err != nil {
+		log.Fatal("Error creating post_hashtags table:", err)
+	}
 }
 
 func cleanupExpiredSessions() {
