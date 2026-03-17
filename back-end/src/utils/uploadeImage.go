@@ -5,17 +5,32 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func SaveUploadedImage(r *http.Request) (string, error) {
-	var imagePath string
+	return saveUploadedImage(r, "avatar_path", "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg")
+}
 
-	file, header, err := r.FormFile("avatar_path")
-	if err != nil {
-			imagePath = "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg"
-   return imagePath, nil
+func SaveUploadedPostImage(r *http.Request) (string, error) {
+	return saveUploadedImage(r, "image_path", "")
+}
+
+func saveUploadedImage(r *http.Request, fieldName, defaultImagePath string) (string, error) {
+	var imagePath string
+	contentType := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "multipart/form-data") {
+		return defaultImagePath, nil
 	}
-	
+
+	file, header, err := r.FormFile(fieldName)
+	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return defaultImagePath, nil
+		}
+
+		return "", errors.New("failed to read uploaded file")
+	}
 
 	defer file.Close()
 
@@ -56,12 +71,11 @@ func SaveUploadedImage(r *http.Request) (string, error) {
 
 	_, err = io.Copy(outFile, file)
 	if err != nil {
-			if imagePath != "" {
-		os.Remove(imagePath)
-	}
+		if imagePath != "" {
+			os.Remove(imagePath)
+		}
 		return "", errors.New("failed to copy image file")
 	}
-
 
 	return imagePath, nil
 }
