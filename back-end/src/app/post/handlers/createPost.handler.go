@@ -42,6 +42,9 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validator.ValidateCreatePost(postReq); err != nil {
+		if uploadedImagePath != "" {
+			os.Remove(uploadedImagePath)
+		}
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -43,6 +43,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 regReq.AvatarPath = imagePath
 
 if err := validator.ValidateRegister(regReq); err != nil {
+	if imagePath != "" {
+			os.Remove(imagePath)
+		}
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
