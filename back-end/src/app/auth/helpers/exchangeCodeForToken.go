@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"social-network/src/app/auth/dto"
-	"social-network/src/utils"
 )
 func ExchangeCodeForToken(code string) (*dto.TokenResponse, error) {
-	clientID := utils.GetGoogleClientID()
-	clientSecret :=  utils.GetGoogleClientSecret()
-	redirectURI := utils.GetGoogleRedirectURI()
+	clientID := GetGoogleClientID()
+	clientSecret :=  GetGoogleClientSecret()
+	redirectURI := GetGoogleRedirectURI()
 
 	if clientID == "" || clientSecret == "" || redirectURI == "" {
 		return nil, errors.New("google oauth config is missing; set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI")

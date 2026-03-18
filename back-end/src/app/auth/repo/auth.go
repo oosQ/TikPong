@@ -2,7 +2,7 @@ package repo
 
 import (
 	"errors"
-	database "social-network/src/db/sqlite"
+	database "social-network/src/db"
 	"social-network/src/models"
 	"time"
 )
@@ -45,7 +45,7 @@ func CheckEmailExists(email string) (bool, error) {
 func CheckUserCredentials(nicknameOrEmail string) (*models.User, error) {
 	var user models.User
 
-	err := database.DB.QueryRow(CheckCredentialsQuery, nicknameOrEmail, nicknameOrEmail).Scan(&user.ID, &user.PasswordHash)
+	err := database.DB.QueryRow(CheckCredentialsQuery, nicknameOrEmail, nicknameOrEmail).Scan(&user.ID, &user.PasswordHash, &user.Email, &user.Role, &user.AvatarPath)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func CheckUserCredentials(nicknameOrEmail string) (*models.User, error) {
 }
 
 func CreateSession(session models.Session) error {
-	_, err := database.DB.Exec(CreateSessionQuery, session.ID, session.UserID, session.ExpiresAt)
+	_, err := database.DB.Exec(CreateSessionQuery, session.ID, session.UserID, session.Role, session.Email, session.AvatarPath, session.ExpiresAt)
 	return err
 }
 
