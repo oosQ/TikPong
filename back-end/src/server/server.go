@@ -2,9 +2,9 @@ package server
 import (
 	"log"
 	"net/http"
-	"social-network/src/db/sqlite"
+	"social-network/src/db"
 	"social-network/src/app/auth"
-	"social-network/src/app/post"
+	"social-network/src/app/post/core"
 )
 
 func Serverinit() {
