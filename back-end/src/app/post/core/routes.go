@@ -2,7 +2,7 @@ package post
 
 import (
 	"net/http"
-	"social-network/src/app/post/handlers"
+	"social-network/src/app/post/core/handlers"
 	"social-network/src/middleware"
 )
 

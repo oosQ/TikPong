@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"social-network/src/app/post/dto"
-	"social-network/src/app/post/services"
-	"social-network/src/app/post/validator"
+	"social-network/src/app/post/core/dto"
+	"social-network/src/app/post/core/services"
+	"social-network/src/app/post/core/validator"
 	"social-network/src/models"
 	"social-network/src/utils"
 )

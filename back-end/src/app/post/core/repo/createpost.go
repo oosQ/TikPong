@@ -3,7 +3,7 @@ package repo
 import (
 	"database/sql"
 	"errors"
-	database "social-network/src/db/sqlite"
+	database "social-network/src/db"
 	"social-network/src/models"
 	"social-network/src/utils"
 )

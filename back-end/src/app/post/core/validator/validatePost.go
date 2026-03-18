@@ -2,7 +2,7 @@ package validator
 
 import (
 	"errors"
-	"social-network/src/app/post/dto"
+	"social-network/src/app/post/core/dto"
 )
 
 var (
