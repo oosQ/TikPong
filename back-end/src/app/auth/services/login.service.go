@@ -32,6 +32,9 @@ func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
     session := models.Session{
 		ID: sessionID,
 		UserID: user.ID,
+		Role: user.Role,
+		Email: user.Email,
+		AvatarPath: user.AvatarPath,
 		ExpiresAt: sessionExpiration,
 	}
 	err = repo.CreateSession(session)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"social-network/src/utils"
-	"social-network/src/db/sqlite"
+	"social-network/src/db"
 	"net/http"
 	"time"
 	"social-network/src/models"
@@ -22,7 +22,7 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			userCtx := &models.UserContext{
 			ID:         user.ID,
 			Nickname:   user.Nickname,
-			Email:      user.Email,
+			Email: user.Email,
 			AvatarPath: user.AvatarPath,
 			Role: 	user.Role,
 		}
@@ -38,7 +38,7 @@ func GetCurrentUser(r *http.Request) *models.User {
 	}
 
 	var user models.User
-	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname , &user.Email, &user.AvatarPath , &user.Role)
+	err = database.DB.QueryRow(repo.CheckSessionQuery, cookie.Value, time.Now()).Scan(&user.ID, &user.Nickname, &user.Email, &user.AvatarPath , &user.Role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil
@@ -57,15 +57,15 @@ func GetUserFromContext(r *http.Request) *models.UserContext {
 	avatarPath := r.Context().Value("avatar_path")
 	role := r.Context().Value("role")
 
-	if userID == nil || username == nil || avatarPath == nil  || email == nil || role == nil {
+	if userID == nil || username == nil || email == nil || avatarPath == nil  || role == nil {
 		return nil
 	}
 
 	return &models.UserContext{
 		ID: userID.(string),
 		Nickname: username.(string),
-		AvatarPath: avatarPath.(string),
 		Email: email.(string),
+		AvatarPath: avatarPath.(string),
 		Role: role.(models.UserRole),
 	}
 }
