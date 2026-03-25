@@ -8,5 +8,5 @@ CREATE TABLE posts (
     is_edited INTEGER NOT NULL DEFAULT 0,
     edited_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

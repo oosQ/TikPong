@@ -20,9 +20,16 @@ func InitDB() {
 		log.Fatal("Error connecting to DB:", err)
 	}
 
+	_, err = DB.Exec(`PRAGMA foreign_keys = ON;`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err = runMigrations(DB); err != nil {
 		log.Fatal("Error running migrations:", err)
 	}
+
+	
 	go cleanupExpiredSessions()
 }
 

@@ -1,8 +1,9 @@
 CREATE TABLE likes_comment (
-    id TEXT PRIMARY KEY,
     comment_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    type TEXT CHECK (type IN ('like', 'dislike')) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (comment_id) REFERENCES comments(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    PRIMARY KEY(comment_id, user_id),
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

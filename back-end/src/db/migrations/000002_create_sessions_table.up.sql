@@ -5,5 +5,5 @@ CREATE TABLE sessions (
     email TEXT NOT NULL,
 	avatar_path TEXT Not NULL,
     role TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
