@@ -12,11 +12,6 @@ import (
 )
 
 func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
-	// Implementation for creating a post will go here
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
     userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
 	if !ok || userCtx == nil {
 		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
@@ -49,7 +44,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call the service to create the post
 	err = services.CreatePost(userCtx.ID, postReq)
 	if err != nil {
 		if uploadedImagePath != "" {
