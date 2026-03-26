@@ -44,7 +44,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = services.CreatePost(userCtx.ID, postReq)
+	err, postID := services.CreatePost(userCtx.ID, postReq)
 	if err != nil {
 		if uploadedImagePath != "" {
 			os.Remove(uploadedImagePath)
@@ -52,6 +52,6 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	utils.SendSuccess(w, nil, "Post created successfully")
+	utils.SendSuccess(w, map[string]string{"post_id": postID}, "Post created successfully")
 }
 
