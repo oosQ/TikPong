@@ -28,6 +28,23 @@ func CreatePost(post models.Post, hashtags []string) (err error) {
 		return err
 	}
 
+	_, err = tx.Exec(`
+		INSERT INTO posts_summary (post_id, total_likes, total_views, total_comments)
+		VALUES (?, 0, 0, 0)
+	`, post.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0) ON CONFLICT(user_id) DO NOTHING`, post.UserID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_posts = total_posts + 1 WHERE user_id = ?`, post.UserID)
+	if err != nil {
+		return err
+	}
+
 	err = createPostHashtags(tx, post.ID, hashtags)
 	if err != nil {
 		return err
