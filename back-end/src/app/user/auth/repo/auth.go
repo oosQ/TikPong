@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func RegisterUser(user models.User) error {
+func RegisterUser(user models.User) (err error) {
 
 	exists, err := CheckEmailExists(user.Email)
 	if err != nil {
@@ -17,17 +17,30 @@ func RegisterUser(user models.User) error {
 		return errors.New("email already exists")
 	}
 
-	_, err = database.DB.Exec(RegisterUserQuery, 
-		 user.ID, user.Email, user.PasswordHash, 
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	_, err = tx.Exec(RegisterUserQuery,
+		user.ID, user.Email, user.PasswordHash,
 		user.VerifiedEmail, user.FirstName, user.LastName,
-		 user.AvatarPath, user.Nickname ,user.AboutMe,
-		  user.IsPublic, user.Role,user.Status, user.DateOfBirth,
-		  user.CreatedAt,user.UpdatedAt ) 
+		user.AvatarPath, user.Nickname, user.AboutMe,
+		user.IsPublic, user.Role, user.Status, user.DateOfBirth,
+		user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0)`, user.ID)
+	return err
 }
 
 func CheckEmailExists(email string) (bool, error) {
