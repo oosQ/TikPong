@@ -8,11 +8,11 @@ import (
 	"social-network/src/utils"
 )
 
-func CreatePost(userID string, req dto.CreatePostRequest) error {
+func CreatePost(userID string, req dto.CreatePostRequest)  (error, string) {
 
 	postID, err := utils.GenerateUUID()
 	if err != nil {
-		return errors.New("Failed to generate post ID")
+		return errors.New("Failed to generate post ID"), ""
 	}
 
 	post := models.Post{
@@ -25,8 +25,8 @@ func CreatePost(userID string, req dto.CreatePostRequest) error {
 	}
 	err = repo.CreatePost(post, req.Hashtags)
 	if err != nil {
-		return err
+		return err, ""
 	}
 
-	return nil
+	return nil, postID
 }
