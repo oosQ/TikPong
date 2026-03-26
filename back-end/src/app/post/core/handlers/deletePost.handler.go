@@ -1,0 +1,30 @@
+package handlers
+
+import (
+	"net/http"
+	"social-network/src/app/post/core/services"
+	"social-network/src/models"
+	"social-network/src/utils"
+)
+
+func DeletePostHandler(w http.ResponseWriter, r *http.Request) {
+	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
+	if !ok || userCtx == nil {
+		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	postID := r.PathValue("postId")
+	if postID == "" {
+		utils.SendError(w, "Missing postId parameter", http.StatusBadRequest)
+		return
+	}
+
+	err := services.DeletePost(userCtx.ID, postID)
+	if err != nil {
+		utils.SendError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.SendSuccess(w, nil, "Post deleted successfully")
+}
