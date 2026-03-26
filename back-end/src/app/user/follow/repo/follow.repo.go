@@ -6,11 +6,38 @@ import (
 	"time"
 )
 
-func CreateFollow(followerID, followingID string) error {
-	_, err := database.DB.Exec(`
-		INSERT INTO follows (follower_id, following_id, created_at)
-		VALUES (?, ?, ?)
-	`, followerID, followingID, time.Now())
+func CreateFollow(followerID, followingID string) (err error) {
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	_, err = tx.Exec(`INSERT INTO follows (follower_id, following_id, created_at) VALUES (?, ?, ?)`, followerID, followingID, time.Now())
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0) ON CONFLICT(user_id) DO NOTHING`, followerID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_following = total_following + 1 WHERE user_id = ?`, followerID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0) ON CONFLICT(user_id) DO NOTHING`, followingID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_followers = total_followers + 1 WHERE user_id = ?`, followingID)
 	return err
 }
 
@@ -215,6 +242,24 @@ func AcceptFollowRequestTx(fromUserID, toUserID string) (err error) {
 	_, err = tx.Exec(`
 		INSERT INTO follows (follower_id, following_id, created_at) VALUES (?, ?, ?)
 	`, fromUserID, toUserID, time.Now())
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0) ON CONFLICT(user_id) DO NOTHING`, fromUserID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_following = total_following + 1 WHERE user_id = ?`, fromUserID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`INSERT INTO user_summary (user_id, total_posts, total_followers, total_following) VALUES (?, 0, 0, 0) ON CONFLICT(user_id) DO NOTHING`, toUserID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_followers = total_followers + 1 WHERE user_id = ?`, toUserID)
 	return err
 }
 
@@ -241,6 +286,15 @@ func RemoveFollowerTx(followerID, currentUserID string) (err error) {
 	_, err = tx.Exec(`
 		DELETE FROM follows WHERE follower_id = ? AND following_id = ?
 	`, followerID, currentUserID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE user_summary SET total_following = CASE WHEN total_following > 0 THEN total_following - 1 ELSE 0 END WHERE user_id = ?`, followerID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE user_summary SET total_followers = CASE WHEN total_followers > 0 THEN total_followers - 1 ELSE 0 END WHERE user_id = ?`, currentUserID)
 	return err
 }
 

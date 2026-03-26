@@ -1,8 +1,8 @@
 CREATE TABLE posts_summary (
     post_id TEXT PRIMARY KEY,
     total_likes INTEGER NOT NULL DEFAULT 0,
-    total_dislikes INTEGER NOT NULL DEFAULT 0,
     total_views INTEGER NOT NULL DEFAULT 0,
+    total_comments INTEGER NOT NULL DEFAULT 0,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
 );
