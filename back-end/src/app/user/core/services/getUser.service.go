@@ -1,0 +1,18 @@
+package services
+
+import (
+	"errors"
+	"social-network/src/app/user/core/dto"
+	"social-network/src/app/user/core/repo"
+)
+
+func GetUser(userID string) (*dto.UserProfileResponse, error) {
+	user, err := repo.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	return user, nil
+}
