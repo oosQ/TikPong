@@ -1,13 +1,13 @@
-package handlers
+package handlers 
 
 import (
 	"net/http"
-	"social-network/src/app/group/services"
-	"social-network/src/models"
+	"social-network/src/app/group/core/services"
 	"social-network/src/utils"
+	"social-network/src/models"
 )
 
-func DeleteGroupHandler(w http.ResponseWriter, r *http.Request) {
+func GetGroupDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
 	if !ok || userCtx == nil {
 		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
@@ -20,9 +20,10 @@ func DeleteGroupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.DeleteGroup(groupID, userCtx.ID); err != nil {
-		utils.SendError(w, err.Error(), http.StatusBadRequest)
+	groupDetails, err := services.GetGroupDetails(groupID, userCtx.ID)
+	if err != nil {
+		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	utils.SendSuccess(w, nil, "Group deleted successfully")
+	utils.SendSuccess(w, groupDetails, "Group details retrieved successfully")
 }

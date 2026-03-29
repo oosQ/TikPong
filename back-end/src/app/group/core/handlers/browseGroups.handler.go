@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"social-network/src/app/group/services"
+	"social-network/src/app/group/core/services"
 	"social-network/src/utils"
 )
 

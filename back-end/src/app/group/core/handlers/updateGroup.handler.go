@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"net/http"
-	"social-network/src/app/group/services"
+	"social-network/src/app/group/core/services"
 	"social-network/src/models"
 	"social-network/src/utils"
-	"social-network/src/app/group/dto"
+	"social-network/src/app/group/core/dto"
 	"encoding/json"
 )
 

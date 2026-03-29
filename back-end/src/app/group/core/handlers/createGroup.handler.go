@@ -3,8 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"social-network/src/app/group/dto"
-	"social-network/src/app/group/services"
+	"social-network/src/app/group/core/dto"
+	"social-network/src/app/group/core/services"
 	"social-network/src/models"
 	"social-network/src/utils"
 )
