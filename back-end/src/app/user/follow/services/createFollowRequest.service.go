@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	notificationservices "social-network/src/app/notification/services"
 	"social-network/src/app/user/follow/repo"
 )
 
@@ -43,7 +44,22 @@ func CreateFollowRequest(currentUserID, targetID string) error {
 		return err
 	}
 	if rejectRequestExists {
-		return repo.DeleteAndCreateFollowRequest(targetID, currentUserID, currentUserID, targetID)
+		err = repo.DeleteAndCreateFollowRequest(targetID, currentUserID, currentUserID, targetID)
+		if err != nil {
+			return err
+		}
+		_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", "You received a follow request", map[string]any{
+			"from_user_id": currentUserID,
+		})
+		return nil
 	}
-	return repo.CreateFollowRequest(currentUserID, targetID)
+	err = repo.CreateFollowRequest(currentUserID, targetID)
+	if err != nil {
+		return err
+	}
+
+	_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", "You received a follow request", map[string]any{
+		"from_user_id": currentUserID,
+	})
+	return nil
 }
