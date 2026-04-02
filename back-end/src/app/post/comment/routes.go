@@ -8,17 +8,17 @@ import (
 )
 
 func Init() {
-	http.HandleFunc("/api/posts/{postId}/comments", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/posts/{postId}/comments", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			handlers.CreateCommentHandler(w, r)
+			middleware.RequireAuth(handlers.CreateCommentHandler)(w, r)
 		case http.MethodGet:
-			handlers.GetCommentsHandler(w, r)
+			middleware.WithOptionalAuth(handlers.GetCommentsHandler)(w, r)
 		default:
 			utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-	}))
+	})
 
 	http.HandleFunc("/api/comments/{commentId}", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
