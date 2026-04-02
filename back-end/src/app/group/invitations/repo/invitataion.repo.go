@@ -2,8 +2,8 @@ package repo
 
 import (
 	"database/sql"
-	"social-network/src/db"
 	"social-network/src/app/group/invitations/dto"
+	database "social-network/src/db"
 	"time"
 )
 
@@ -66,7 +66,7 @@ func InviteUser(groupID, inviterID, inviteeID string) error {
 
 func CancelInvitation(groupID, inviterID, inviteeID string) error {
 	_, err := database.DB.Exec(`
-		DELETE FROM group_invitations WHERE group_id = ? AND invitee_id = ? AND inviter_id = ?
+		DELETE FROM group_invitations WHERE group_id = ? AND invitee_id = ? AND inviter_id = ? AND status = 'pending'
 	`, groupID, inviteeID, inviterID)
 	return err
 }
@@ -76,6 +76,7 @@ func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
 			gi.group_id || ':' || gi.invitee_id AS id,
 			gi.group_id,
 			g.title,
+			COALESCE(g.avatar_path, ''),
 			gi.invitee_id,
 			u.nickname,
 			COALESCE(u.avatar_path, ''),
@@ -83,7 +84,7 @@ func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
 		FROM group_invitations gi
 		JOIN groups g ON g.id = gi.group_id
 		JOIN users u ON u.id = gi.invitee_id
-		WHERE gi.inviter_id = ?
+		WHERE gi.inviter_id = ? and gi.status = 'pending'
 		ORDER BY gi.created_at DESC
 	`, userID)
 	if err != nil {
@@ -98,6 +99,7 @@ func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
 			&item.ID,
 			&item.GroupID,
 			&item.GroupTitle,
+			&item.GroupAvatar,
 			&item.InviteeID,
 			&item.InviteeNickname,
 			&item.AvatarPath,
@@ -117,6 +119,7 @@ func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, e
 			gi.group_id || ':' || gi.invitee_id AS id,
 			gi.group_id,
 			g.title,
+			COALESCE(g.avatar_path, ''),
 			gi.inviter_id,
 			u.nickname,
 			COALESCE(u.avatar_path, ''),
@@ -124,7 +127,7 @@ func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, e
 		FROM group_invitations gi
 		JOIN groups g ON g.id = gi.group_id
 		JOIN users u ON u.id = gi.inviter_id
-		WHERE gi.invitee_id = ?
+		WHERE gi.invitee_id = ? and gi.status = 'pending'
 		ORDER BY gi.created_at DESC
 	`, userID)
 	if err != nil {
@@ -139,6 +142,7 @@ func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, e
 			&item.ID,
 			&item.GroupID,
 			&item.GroupTitle,
+			&item.GroupAvatar,
 			&item.InviterID,
 			&item.InviterNickname,
 			&item.AvatarPath,

@@ -7,7 +7,7 @@ import (
 	"database/sql"
 )
 
-func CreateGroup(groupID, title, description, creatorID string) (err error) {
+func CreateGroup(groupID, title, description, groupAvatar, creatorID string) (err error) {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
@@ -21,9 +21,9 @@ func CreateGroup(groupID, title, description, creatorID string) (err error) {
 	}()
 
 	_, err = tx.Exec(`
-		INSERT INTO groups (id, title, description, creator_id, created_at)
-		VALUES (?, ?, ?, ?, ?)
-	`, groupID, title, description, creatorID, time.Now())
+		INSERT INTO groups (id, title, description, avatar_path, creator_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, groupID, title, description, groupAvatar, creatorID, time.Now())
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func CreateGroup(groupID, title, description, creatorID string) (err error) {
 
 func GetGroups() ([]dto.GroupResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT id, title, description, creator_id, created_at
+		SELECT id, title, description, COALESCE(avatar_path, ''), creator_id, created_at
 		FROM groups
 		ORDER BY created_at DESC
 	`)
@@ -49,7 +49,7 @@ func GetGroups() ([]dto.GroupResponse, error) {
 	items := make([]dto.GroupResponse, 0)
 	for rows.Next() {
 		var item dto.GroupResponse
-		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.CreatorID, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.GroupAvatar, &item.CreatorID, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -62,20 +62,20 @@ func DeleteGroup(groupID string) error {
 	return err
 }
 
-func UpdateGroup(groupID, title, description string) error {
+func UpdateGroup(groupID, title, description, groupAvatar string) error {
 	_, err := database.DB.Exec(`
-		UPDATE groups SET title = ?, description = ? WHERE id = ?
-	`, title, description, groupID)
+		UPDATE groups SET title = ?, description = ?, avatar_path = ? WHERE id = ?
+	`, title, description, groupAvatar, groupID)
 	return err
 }
 
 func GetGroupDetails(groupID string) (dto.GetGroupDetailsResponse, error) {
 	var details dto.GetGroupDetailsResponse
 	err := database.DB.QueryRow(`
-		SELECT id, title, description, creator_id, created_at
+		SELECT id, title, description, COALESCE(avatar_path, ''), creator_id, created_at
 		FROM groups
 		WHERE id = ?
-	`, groupID).Scan(&details.ID, &details.Title, &details.Description, &details.CreatorID, &details.CreatedAt)
+	`, groupID).Scan(&details.ID, &details.Title, &details.Description, &details.GroupAvatar, &details.CreatorID, &details.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return dto.GetGroupDetailsResponse{}, nil
@@ -84,11 +84,12 @@ func GetGroupDetails(groupID string) (dto.GetGroupDetailsResponse, error) {
 	}
 
 	err = database.DB.QueryRow(`
-		SELECT nickname FROM users WHERE id = ?
-	`, details.CreatorID).Scan(&details.CreatorNickname)
+		SELECT nickname, COALESCE(avatar_path, '') FROM users WHERE id = ?
+	`, details.CreatorID).Scan(&details.CreatorNickname, &details.CreatorAvatarPath)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			details.CreatorNickname = ""
+			details.CreatorAvatarPath = ""
 		} else {
 			return dto.GetGroupDetailsResponse{}, err
 		}

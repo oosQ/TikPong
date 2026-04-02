@@ -3,7 +3,8 @@ package dto
 import "time"
 
 type CreateCommentRequest struct {
-	Content string `json:"content"`
+	Content   string `json:"content"`
+	ImagePath string `json:"image_path,omitempty"`
 }
 
 type EditCommentRequest struct {
@@ -15,6 +16,7 @@ type CommentResponse struct {
 	PostID     string    `json:"post_id"`
 	UserID     string    `json:"user_id"`
 	Content    string    `json:"content"`
+	ImagePath  string    `json:"image_path"`
 	TotalLikes int       `json:"total_likes"`
 	IsEdited   bool      `json:"is_edited"`
 	CreatedAt  time.Time `json:"created_at"`

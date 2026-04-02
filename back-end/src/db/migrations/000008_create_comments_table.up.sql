@@ -3,6 +3,7 @@ CREATE TABLE comments (
     post_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     content TEXT NOT NULL,
+    image_path TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_edited INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,

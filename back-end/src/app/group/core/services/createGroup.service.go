@@ -11,6 +11,7 @@ import (
 func CreateGroup(creatorID string, req dto.CreateGroupRequest) (string, error) {
 	title := strings.TrimSpace(req.Title)
 	description := strings.TrimSpace(req.Description)
+	groupAvatar := strings.TrimSpace(req.GroupAvatar)
 	if title == "" || description == "" {
 		return "", errors.New("title and description are required")
 	}
@@ -20,7 +21,7 @@ func CreateGroup(creatorID string, req dto.CreateGroupRequest) (string, error) {
 		return "", errors.New("failed to generate group id")
 	}
 
-	if err := repo.CreateGroup(groupID, title, description, creatorID); err != nil {
+	if err := repo.CreateGroup(groupID, title, description, groupAvatar, creatorID); err != nil {
 		return "", err
 	}
 

@@ -34,7 +34,24 @@ func CommentExists(commentID string) (bool, error) {
 	return count > 0, nil
 }
 
-func CreateComment(commentID, postID, userID, content string) error {
+func GetCommentPostID(commentID string) (string, error) {
+	var postID string
+	err := database.DB.QueryRow(`
+		SELECT post_id
+		FROM comments
+		WHERE id = ?
+	`, commentID).Scan(&postID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+
+	return postID, nil
+}
+
+func CreateComment(commentID, postID, userID, content, imagePath string) error {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
@@ -49,9 +66,9 @@ func CreateComment(commentID, postID, userID, content string) error {
 	}()
 
 	_, err = tx.Exec(`
-		INSERT INTO comments (id, post_id, user_id, content)
-		VALUES (?, ?, ?, ?)
-	`, commentID, postID, userID, content)
+		INSERT INTO comments (id, post_id, user_id, content, image_path)
+		VALUES (?, ?, ?, ?, ?)
+	`, commentID, postID, userID, content, imagePath)
 	if err != nil {
 		return err
 	}
@@ -170,15 +187,20 @@ func GetCommentOwnerID(commentID string) (string, error) {
 	return userID, nil
 }
 
-func GetCommentsByPostID(postID string) ([]dto.CommentResponse, error) {
+func GetCommentsByPostID(postID, currentUserID string) ([]dto.CommentResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
+		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(c.image_path, ''), COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
 		FROM comments c
 		JOIN users u ON u.id = c.user_id
 		LEFT JOIN comments_summary cs ON cs.comment_id = c.id
 		WHERE c.post_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = ? AND ub.blocked_id = c.user_id)
+			   OR (ub.blocker_id = c.user_id AND ub.blocked_id = ?)
+		)
 		ORDER BY c.created_at DESC
-	`, postID)
+	`, postID, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +210,7 @@ func GetCommentsByPostID(postID string) ([]dto.CommentResponse, error) {
 	for rows.Next() {
 		var item dto.CommentResponse
 		var isEdited int
-		if err := rows.Scan(&item.ID, &item.PostID, &item.UserID, &item.Content, &item.TotalLikes, &item.CreatedAt, &isEdited, &item.Nickname, &item.AvatarPath); err != nil {
+		if err := rows.Scan(&item.ID, &item.PostID, &item.UserID, &item.Content, &item.ImagePath, &item.TotalLikes, &item.CreatedAt, &isEdited, &item.Nickname, &item.AvatarPath); err != nil {
 			return nil, err
 		}
 		item.IsEdited = isEdited == 1
@@ -198,15 +220,31 @@ func GetCommentsByPostID(postID string) ([]dto.CommentResponse, error) {
 	return comments, rows.Err()
 }
 
-func GetCommentsByUserID(userID string) ([]dto.CommentResponse, error) {
+func GetCommentsByUserID(userID, currentUserID string) ([]dto.CommentResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
+		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(c.image_path, ''), COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
 		FROM comments c
 		JOIN users u ON u.id = c.user_id
+		JOIN posts p ON p.id = c.post_id
 		LEFT JOIN comments_summary cs ON cs.comment_id = c.id
 		WHERE c.user_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = ? AND ub.blocked_id = c.user_id)
+			   OR (ub.blocker_id = c.user_id AND ub.blocked_id = ?)
+		)
+		AND (
+			p.privacy = 'public'
+			OR p.user_id = ?
+			OR (p.privacy = 'almost_private' AND EXISTS (
+				SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+			))
+			OR (p.privacy = 'private' AND EXISTS (
+				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+			))
+		)
 		ORDER BY c.created_at DESC
-	`, userID)
+	`, userID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +254,7 @@ func GetCommentsByUserID(userID string) ([]dto.CommentResponse, error) {
 	for rows.Next() {
 		var item dto.CommentResponse
 		var isEdited int
-		if err := rows.Scan(&item.ID, &item.PostID, &item.UserID, &item.Content, &item.TotalLikes, &item.CreatedAt, &isEdited, &item.Nickname, &item.AvatarPath); err != nil {
+		if err := rows.Scan(&item.ID, &item.PostID, &item.UserID, &item.Content, &item.ImagePath, &item.TotalLikes, &item.CreatedAt, &isEdited, &item.Nickname, &item.AvatarPath); err != nil {
 			return nil, err
 		}
 		item.IsEdited = isEdited == 1

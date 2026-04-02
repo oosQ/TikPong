@@ -18,8 +18,9 @@ func UpdateGroup(groupID, userID string, req dto.UpdateGroupRequest) error {
 	}
 	title := strings.TrimSpace(req.Title)
 	description := strings.TrimSpace(req.Description)
+	groupAvatar := strings.TrimSpace(req.GroupAvatar)
 	if title == "" || description == "" {
 		return errors.New("title and description are required")
 	}
-	return repo.UpdateGroup(groupID, title, description)
+	return repo.UpdateGroup(groupID, title, description, groupAvatar)
 }

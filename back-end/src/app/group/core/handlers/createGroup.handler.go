@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"social-network/src/app/group/core/dto"
 	"social-network/src/app/group/core/services"
@@ -17,10 +16,14 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req dto.CreateGroupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.SendError(w, "Invalid request body", http.StatusBadRequest)
+	avatarPath, err := utils.SaveUploadedImage(r)
+	if err != nil {
+		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	req.GroupAvatar = avatarPath
+    req.Description = r.FormValue("description")
+	req.Title = r.FormValue("title")
 
 	groupID, err := services.CreateGroup(userCtx.ID, req)
 	if err != nil {
