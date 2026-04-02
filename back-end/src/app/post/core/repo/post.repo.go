@@ -35,9 +35,24 @@ func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
 		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
 		FROM posts p
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
-		WHERE privacy = 'public' OR user_id = ?
-		ORDER BY created_at DESC
-	`, currentUserID)
+		WHERE
+			NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+			p.privacy = 'public'
+			OR p.user_id = ?
+			OR (p.privacy = 'almost_private' AND EXISTS (
+				SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+			))
+			OR (p.privacy = 'private' AND EXISTS (
+				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+			))
+			)
+		ORDER BY p.created_at DESC
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +72,7 @@ func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
 	return posts, rows.Err()
 }
 
-func GetPostByID(postID string) (*dto.PostDetailResponse, error) {
+func GetPostByID(postID, currentUserID string) (*dto.PostDetailResponse, error) {
 	var post dto.PostDetailResponse
 	var isEdited int
 	err := database.DB.QueryRow(`
@@ -65,7 +80,22 @@ func GetPostByID(postID string) (*dto.PostDetailResponse, error) {
 		FROM posts p
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
 		WHERE p.id = ?
-	`, postID).Scan(&post.ID, &post.UserID, &post.Title, &post.Content, &post.Privacy, &post.ImagePath, &post.TotalLikes, &post.TotalViews, &post.TotalComments, &isEdited, &post.CreatedAt)
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+			   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+		)
+		AND (
+			p.privacy = 'public'
+			OR p.user_id = ?
+			OR (p.privacy = 'almost_private' AND EXISTS (
+				SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+			))
+			OR (p.privacy = 'private' AND EXISTS (
+				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+			))
+		)
+	`, postID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID).Scan(&post.ID, &post.UserID, &post.Title, &post.Content, &post.Privacy, &post.ImagePath, &post.TotalLikes, &post.TotalViews, &post.TotalComments, &isEdited, &post.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -96,6 +126,26 @@ func GetPostByID(postID string) (*dto.PostDetailResponse, error) {
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	// Fetch allowed viewers for private posts (visible to post owner)
+	if post.Privacy == "private" {
+		viewerRows, err := database.DB.Query(`SELECT viewer_id FROM post_viewers WHERE post_id = ?`, postID)
+		if err != nil {
+			return nil, err
+		}
+		defer viewerRows.Close()
+		post.AllowedViewers = make([]string, 0)
+		for viewerRows.Next() {
+			var uid string
+			if err := viewerRows.Scan(&uid); err != nil {
+				return nil, err
+			}
+			post.AllowedViewers = append(post.AllowedViewers, uid)
+		}
+		if err := viewerRows.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	return &post, nil
@@ -139,8 +189,8 @@ func DeletePost(postID string) (result string, err error) {
 	return
 }
 
-// EditPostTx updates the post fields and replaces its hashtags within a single transaction.
-func EditPostTx(postID, title, content, privacy, imagePath string, hashtags []string) (err error) {
+// EditPostTx updates the post fields, replaces its hashtags, and updates post_viewers within a single transaction.
+func EditPostTx(postID, title, content, privacy, imagePath string, hashtags []string, allowedViewers []string) (err error) {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
@@ -168,5 +218,23 @@ func EditPostTx(postID, title, content, privacy, imagePath string, hashtags []st
 	}
 
 	err = createPostHashtags(tx, postID, hashtags)
-	return err
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM post_viewers WHERE post_id = ?`, postID)
+	if err != nil {
+		return err
+	}
+
+	if privacy == "private" {
+		for _, viewerID := range allowedViewers {
+			_, err = tx.Exec(`INSERT OR IGNORE INTO post_viewers (post_id, viewer_id) VALUES (?, ?)`, postID, viewerID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

@@ -6,6 +6,14 @@ import (
 )
 
 func AcceptFollowRequest(currentUserID, fromUserID string) error {
+	blocked, err := repo.CheckBlockedEitherWay(currentUserID, fromUserID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errors.New("cannot accept follow request from a blocked user")
+	}
+
 	requestExists, err := repo.CheckPendingFollowRequestExists(fromUserID, currentUserID)
 	if err != nil {
 		return err

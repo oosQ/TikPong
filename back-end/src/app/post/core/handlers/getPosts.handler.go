@@ -8,13 +8,13 @@ import (
 )
 
 func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
+	currentUserID := ""
 	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
-	if !ok || userCtx == nil {
-		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	if ok && userCtx != nil {
+		currentUserID = userCtx.ID
 	}
 
-	posts, err := services.GetPosts(userCtx.ID)
+	posts, err := services.GetPosts(currentUserID)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

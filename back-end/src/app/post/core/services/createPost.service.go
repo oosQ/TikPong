@@ -8,7 +8,7 @@ import (
 	"social-network/src/utils"
 )
 
-func CreatePost(userID string, req dto.CreatePostRequest)  (error, string) {
+func CreatePost(userID string, req dto.CreatePostRequest) (error, string) {
 
 	postID, err := utils.GenerateUUID()
 	if err != nil {
@@ -23,7 +23,7 @@ func CreatePost(userID string, req dto.CreatePostRequest)  (error, string) {
 		Privacy:   req.Privacy,
 		ImagePath: req.ImagePath,
 	}
-	err = repo.CreatePost(post, req.Hashtags)
+	err = repo.CreatePost(post, req.Hashtags, req.AllowedViewers)
 	if err != nil {
 		return err, ""
 	}

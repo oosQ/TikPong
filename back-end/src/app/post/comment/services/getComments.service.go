@@ -4,16 +4,17 @@ import (
 	"errors"
 	"social-network/src/app/post/comment/dto"
 	"social-network/src/app/post/comment/repo"
+	sharedRepo "social-network/src/app/post/shared/repo"
 )
 
-func GetComments(postID string) ([]dto.CommentResponse, error) {
-	postExists, err := repo.PostExists(postID)
+func GetComments(currentUserID, postID string) ([]dto.CommentResponse, error) {
+	canAccess, err := sharedRepo.CanUserAccessPost(postID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
-	if !postExists {
-		return nil, errors.New("post not found")
+	if !canAccess {
+		return nil, errors.New("post not found or access denied")
 	}
 
-	return repo.GetCommentsByPostID(postID)
+	return repo.GetCommentsByPostID(postID, currentUserID)
 }

@@ -15,6 +15,14 @@ func CreateFollowRequest(currentUserID, targetID string) error {
 		return errors.New("cannot send a follow request to yourself")
 	}
 
+	blocked, err := repo.CheckBlockedEitherWay(currentUserID, targetID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errors.New("cannot send follow request to a blocked user")
+	}
+
 	isPublic, err := repo.IsUserPublic(targetID)
 	if err != nil {
 		return err

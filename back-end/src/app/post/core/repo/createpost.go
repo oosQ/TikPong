@@ -8,7 +8,7 @@ import (
 	"social-network/src/utils"
 )
 
-func CreatePost(post models.Post, hashtags []string) (err error) {
+func CreatePost(post models.Post, hashtags []string, allowedViewers []string) (err error) {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
@@ -48,6 +48,15 @@ func CreatePost(post models.Post, hashtags []string) (err error) {
 	err = createPostHashtags(tx, post.ID, hashtags)
 	if err != nil {
 		return err
+	}
+
+	if post.Privacy == "private" {
+		for _, viewerID := range allowedViewers {
+			_, err = tx.Exec(`INSERT OR IGNORE INTO post_viewers (post_id, viewer_id) VALUES (?, ?)`, post.ID, viewerID)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil

@@ -25,7 +25,8 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	postReq.Privacy = r.FormValue("privacy")
 	postReq.ImagePath = r.FormValue("image_path")
 	postReq.Hashtags = r.Form["hashtags"]
-    fmt.Printf("Received post creation request: %+v\n", postReq.Hashtags)
+	postReq.AllowedViewers = r.Form["allowed_viewers"]
+	fmt.Printf("Received post creation request: %+v\n", postReq.Hashtags)
 	uploadedImagePath, err := utils.SaveUploadedPostImage(r)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)

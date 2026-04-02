@@ -23,5 +23,5 @@ func EditPost(currentUserID, postID string, req dto.EditPostRequest) error {
 		return errors.New("you can only edit your own posts")
 	}
 
-	return repo.EditPostTx(postID, req.Title, req.Content, req.Privacy, req.ImagePath, req.Hashtags)
+	return repo.EditPostTx(postID, req.Title, req.Content, req.Privacy, req.ImagePath, req.Hashtags, req.AllowedViewers)
 }

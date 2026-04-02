@@ -28,6 +28,7 @@ func EditPostHandler(w http.ResponseWriter, r *http.Request) {
 	req.Content = r.FormValue("content")
 	req.Privacy = r.FormValue("privacy")
 	req.Hashtags = r.Form["hashtags"]
+	req.AllowedViewers = r.Form["allowed_viewers"]
 
 	uploadedImagePath, err := utils.SaveUploadedPostImage(r)
 	if err != nil {

@@ -10,6 +10,14 @@ func FollowUser(currentUserID, followingID string) error {
 		return errors.New("cannot follow yourself")
 	}
 
+	blocked, err := repo.CheckBlockedEitherWay(currentUserID, followingID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errors.New("cannot follow a blocked user")
+	}
+
 	isPublic, err := repo.IsUserPublic(followingID)
 	if err != nil {
 		return err

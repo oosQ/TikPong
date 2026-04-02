@@ -2,16 +2,17 @@ package services
 
 import (
 	"errors"
+	sharedRepo "social-network/src/app/post/shared/repo"
 	"social-network/src/app/post/view/repo"
 )
 
 func CreateView(currentUserID, postID string) error {
-	postExists, err := repo.PostExists(postID)
+	canAccess, err := sharedRepo.CanUserAccessPost(postID, currentUserID)
 	if err != nil {
 		return err
 	}
-	if !postExists {
-		return errors.New("post not found")
+	if !canAccess {
+		return errors.New("post not found or access denied")
 	}
 
 	alreadyViewed, err := repo.CheckPostViewExists(postID, currentUserID)
@@ -19,7 +20,7 @@ func CreateView(currentUserID, postID string) error {
 		return err
 	}
 	if alreadyViewed {
-		return  errors.New("post already viewed by this user")
+		return errors.New("post already viewed by this user")
 	}
 
 	return repo.CreatePostView(postID, currentUserID)

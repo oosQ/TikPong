@@ -42,14 +42,29 @@ func HashtagExists(hashtagID string) (bool, error) {
 	return count > 0, nil
 }
 
-func GetPostsByHashtagID(hashtagID string) ([]dto.PostSummaryResponse, error) {
+func GetPostsByHashtagID(hashtagID, currentUserID string) ([]dto.PostSummaryResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT p.id, p.title, p.content, p.user_id, p.privacy, p.image_path, p.created_at
 		FROM posts p
 		JOIN post_hashtags ph ON ph.post_id = p.id
 		WHERE ph.hashtag_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+			   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+		)
+		AND (
+			p.privacy = 'public'
+			OR p.user_id = ?
+			OR (p.privacy = 'almost_private' AND EXISTS (
+				SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+			))
+			OR (p.privacy = 'private' AND EXISTS (
+				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+			))
+		)
 		ORDER BY p.created_at DESC
-	`, hashtagID)
+	`, hashtagID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}

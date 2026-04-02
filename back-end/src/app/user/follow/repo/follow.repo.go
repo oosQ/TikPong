@@ -49,6 +49,17 @@ func CheckFollowExists(followerID, followingID string) (bool, error) {
 	return count > 0, err
 }
 
+func CheckBlockedEitherWay(userA, userB string) (bool, error) {
+	var count int
+	err := database.DB.QueryRow(`
+		SELECT COUNT(*)
+		FROM user_blocks
+		WHERE (blocker_id = ? AND blocked_id = ?)
+		   OR (blocker_id = ? AND blocked_id = ?)
+	`, userA, userB, userB, userA).Scan(&count)
+	return count > 0, err
+}
+
 func CreateFollowRequest(fromUserID, toUserID string) error {
 	_, err := database.DB.Exec(`
 		INSERT INTO follow_requests (requester_id, target_id, status, created_at)
@@ -85,6 +96,11 @@ func GetFollowRequests(userID string) ([]dto.FollowRequestReceivedResponse, erro
 		FROM follow_requests fr
 		JOIN users u ON u.id = fr.requester_id
 		WHERE fr.target_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = fr.target_id AND ub.blocked_id = fr.requester_id)
+			   OR (ub.blocker_id = fr.requester_id AND ub.blocked_id = fr.target_id)
+		)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -125,6 +141,11 @@ func GetFollowers(userID string) ([]dto.FollowInfoResponse, error) {
 		FROM follows f
 		JOIN users u ON u.id = f.follower_id
 		WHERE f.following_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = f.following_id AND ub.blocked_id = f.follower_id)
+			   OR (ub.blocker_id = f.follower_id AND ub.blocked_id = f.following_id)
+		)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -152,6 +173,11 @@ func GetFollowing(userID string) ([]dto.FollowInfoResponse, error) {
 		FROM follows f
 		JOIN users u ON u.id = f.following_id
 		WHERE f.follower_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = f.follower_id AND ub.blocked_id = f.following_id)
+			   OR (ub.blocker_id = f.following_id AND ub.blocked_id = f.follower_id)
+		)
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -179,6 +205,11 @@ func GetSentFollowRequests(userID string) ([]dto.FollowRequestResponse, error) {
 		FROM follow_requests fr
 		JOIN users u ON u.id = fr.target_id
 		WHERE fr.requester_id = ?
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = fr.requester_id AND ub.blocked_id = fr.target_id)
+			   OR (ub.blocker_id = fr.target_id AND ub.blocked_id = fr.requester_id)
+		)
 	`, userID)
 	if err != nil {
 		return nil, err

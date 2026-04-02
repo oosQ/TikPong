@@ -16,8 +16,11 @@ func ValidateCreatePost(req dto.CreatePostRequest) error{
 	if req.Content == "" || len(req.Content) > 2000 {
 		return errors.New("Content is required and must be between 1 and 2000 characters")
 	}
-	if req.Privacy != "public" && req.Privacy != "friends" && req.Privacy != "private" {
-		return errors.New("Privacy must be one of: public, friends, private")
+	if req.Privacy != "public" && req.Privacy != "almost_private" && req.Privacy != "private" {
+		return errors.New("Privacy must be one of: public, almost_private, private")
+	}
+	if req.Privacy == "private" && len(req.AllowedViewers) == 0 {
+		return errors.New("Private posts must have at least one allowed viewer")
 	}
 	if len(req.Hashtags) > 5 || len(req.Hashtags) < 0 {
 		return errors.New("A maximum of 5 hashtags is allowed")
@@ -37,8 +40,11 @@ func ValidateEditPost(req dto.EditPostRequest) error {
 	if req.Content == "" || len(req.Content) > 2000 {
 		return errors.New("Content is required and must be between 1 and 2000 characters")
 	}
-	if req.Privacy != "public" && req.Privacy != "friends" && req.Privacy != "private" {
-		return errors.New("Privacy must be one of: public, friends, private")
+	if req.Privacy != "public" && req.Privacy != "almost_private" && req.Privacy != "private" {
+		return errors.New("Privacy must be one of: public, almost_private, private")
+	}
+	if req.Privacy == "private" && len(req.AllowedViewers) == 0 {
+		return errors.New("Private posts must have at least one allowed viewer")
 	}
 	if len(req.Hashtags) > 5 {
 		return errors.New("A maximum of 5 hashtags is allowed")

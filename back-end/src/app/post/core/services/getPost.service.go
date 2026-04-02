@@ -6,13 +6,13 @@ import (
 	"social-network/src/app/post/core/repo"
 )
 
-func GetPost(postID string) (*dto.PostDetailResponse, error) {
-	post, err := repo.GetPostByID(postID)
+func GetPost(postID, currentUserID string) (*dto.PostDetailResponse, error) {
+	post, err := repo.GetPostByID(postID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
 	if post == nil {
-		return nil, errors.New("post not found")
+		return nil, errors.New("post not found or you do not have permission to view it")
 	}
 
 	return post, nil
