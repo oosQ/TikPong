@@ -93,20 +93,26 @@ func DeleteBlock(blockerID, blockedID string) error {
 	return err
 }
 
-func GetBlockedUsers(blockerID string) ([]dto.BlockedUserResponse, error) {
+func GetBlockedUsers(blockerID, cursor string, limit int) (*dto.GetBlockedUsersResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT ub.blocked_id, u.nickname, COALESCE(u.avatar_path, ''), ub.created_at
 		FROM user_blocks ub
 		JOIN users u ON u.id = ub.blocked_id
 		WHERE ub.blocker_id = ?
-		ORDER BY ub.created_at DESC
-	`, blockerID)
+		AND (
+			? = ''
+			OR ub.created_at < (SELECT created_at FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?)
+			OR (ub.created_at = (SELECT created_at FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?) AND ub.blocked_id < ?)
+		)
+		ORDER BY ub.created_at DESC, ub.blocked_id DESC
+		LIMIT ?
+	`, blockerID, cursor, blockerID, cursor, blockerID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	blockedUsers := make([]dto.BlockedUserResponse, 0)
+	blockedUsers := make([]dto.BlockedUserResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.BlockedUserResponse
 		if err := rows.Scan(&item.UserID, &item.Nickname, &item.AvatarPath, &item.BlockedAt); err != nil {
@@ -115,5 +121,19 @@ func GetBlockedUsers(blockerID string) ([]dto.BlockedUserResponse, error) {
 		blockedUsers = append(blockedUsers, item)
 	}
 
-	return blockedUsers, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetBlockedUsersResponse{
+		Users: blockedUsers,
+		Limit: limit,
+	}
+
+	if len(blockedUsers) > limit {
+		result.Users = blockedUsers[:limit]
+		result.NextCursor = result.Users[len(result.Users)-1].UserID
+	}
+
+	return result, nil
 }

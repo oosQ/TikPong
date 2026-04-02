@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/group/invitations/repo"
 )
 
-func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, error) {
-	return repo.ListReceivedInvitations(userID)
+func ListReceivedInvitations(userID, cursor string, limit int) (*dto.ListReceivedInvitationsResponse, error) {
+	return repo.ListReceivedInvitations(userID, cursor, limit)
 }

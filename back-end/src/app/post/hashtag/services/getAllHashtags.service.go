@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/post/hashtag/repo"
 )
 
-func GetAllHashtags() ([]dto.HashtagResponse, error) {
-	return repo.GetAllHashtags()
+func GetAllHashtags(cursor string, limit int) (*dto.GetAllHashtagsResponse, error) {
+	return repo.GetAllHashtags(cursor, limit)
 }

@@ -7,7 +7,12 @@ import (
 )
 
 func GetAllHashtagsHandler(w http.ResponseWriter, r *http.Request) {
-	hashtags, err := services.GetAllHashtags()
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	hashtags, err := services.GetAllHashtags(cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

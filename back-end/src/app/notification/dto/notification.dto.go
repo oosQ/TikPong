@@ -11,3 +11,9 @@ type NotificationResponse struct {
 	IsRead    bool      `json:"is_read"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type GetNotificationsResponse struct {
+	Notifications []NotificationResponse `json:"notifications"`
+	NextCursor    string                 `json:"next_cursor,omitempty"`
+	Limit         int                    `json:"limit"`
+}

@@ -6,3 +6,9 @@ type GroupMemberResponse struct {
 	AvatarPath string `json:"avatar_path"`
 	Role       string `json:"role"`
 }
+
+type ListMembersResponse struct {
+	Members    []GroupMemberResponse `json:"members"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	Limit      int                   `json:"limit"`
+}

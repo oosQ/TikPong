@@ -14,6 +14,12 @@ type GroupPostResponse struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type ListGroupPostsResponse struct {
+	Posts      []GroupPostResponse `json:"posts"`
+	NextCursor string              `json:"next_cursor,omitempty"`
+	Limit      int                 `json:"limit"`
+}
+
 type CreateGroupPostRequest struct {
 	Title     string `json:"title"`
 	Content   string `json:"content"`

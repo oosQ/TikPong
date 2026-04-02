@@ -6,7 +6,7 @@ import (
 	"social-network/src/app/group/membership/dto"
 	"social-network/src/app/group/shared"
 )
-func ListMembers(groupID, userID string) ([]dto.GroupMemberResponse, error) {
+func ListMembers(groupID, userID, cursor string, limit int) (*dto.ListMembersResponse, error) {
 	member, err := shared.IsMember(groupID, userID)
 	if err != nil {
 		return nil, err
@@ -15,6 +15,6 @@ func ListMembers(groupID, userID string) ([]dto.GroupMemberResponse, error) {
 		return nil, errors.New("only group members can list members")
 	}
 
-	return repo.ListMembers(groupID)
+	return repo.ListMembers(groupID, cursor, limit)
 }
 

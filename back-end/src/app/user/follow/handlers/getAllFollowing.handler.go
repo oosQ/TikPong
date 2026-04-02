@@ -14,7 +14,12 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	following, err := services.GetFollowing(userCtx.ID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	following, err := services.GetFollowing(userCtx.ID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

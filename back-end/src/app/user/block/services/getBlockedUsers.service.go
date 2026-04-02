@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/user/block/repo"
 )
 
-func GetBlockedUsers(currentUserID string) ([]dto.BlockedUserResponse, error) {
-	return repo.GetBlockedUsers(currentUserID)
+func GetBlockedUsers(currentUserID, cursor string, limit int) (*dto.GetBlockedUsersResponse, error) {
+	return repo.GetBlockedUsers(currentUserID, cursor, limit)
 }

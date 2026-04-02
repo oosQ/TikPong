@@ -20,7 +20,12 @@ func GetPostsByHashtagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	posts, err := services.GetPostsByHashtag(hashtagID, currentUserID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	posts, err := services.GetPostsByHashtag(hashtagID, currentUserID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return

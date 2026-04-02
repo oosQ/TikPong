@@ -34,6 +34,12 @@ type PostSummaryResponse struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+type GetPostsResponse struct {
+	Posts      []PostSummaryResponse `json:"posts"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	Limit      int                   `json:"limit"`
+}
+
 type PostDetailResponse struct {
 	ID             string    `json:"id"`
 	UserID         string    `json:"user_id"`

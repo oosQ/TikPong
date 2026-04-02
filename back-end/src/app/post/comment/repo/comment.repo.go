@@ -187,7 +187,7 @@ func GetCommentOwnerID(commentID string) (string, error) {
 	return userID, nil
 }
 
-func GetCommentsByPostID(postID, currentUserID string) ([]dto.CommentResponse, error) {
+func GetCommentsByPostID(postID, currentUserID, cursor string, limit int) (*dto.GetCommentsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(c.image_path, ''), COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
 		FROM comments c
@@ -199,14 +199,20 @@ func GetCommentsByPostID(postID, currentUserID string) ([]dto.CommentResponse, e
 			WHERE (ub.blocker_id = ? AND ub.blocked_id = c.user_id)
 			   OR (ub.blocker_id = c.user_id AND ub.blocked_id = ?)
 		)
-		ORDER BY c.created_at DESC
-	`, postID, currentUserID, currentUserID)
+			AND (
+				? = ''
+				OR c.created_at < (SELECT created_at FROM comments WHERE id = ?)
+				OR (c.created_at = (SELECT created_at FROM comments WHERE id = ?) AND c.id < ?)
+			)
+			ORDER BY c.created_at DESC, c.id DESC
+			LIMIT ?
+		`, postID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	comments := make([]dto.CommentResponse, 0)
+		comments := make([]dto.CommentResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.CommentResponse
 		var isEdited int
@@ -217,10 +223,24 @@ func GetCommentsByPostID(postID, currentUserID string) ([]dto.CommentResponse, e
 		comments = append(comments, item)
 	}
 
-	return comments, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetCommentsResponse{
+		Comments: comments,
+		Limit:    limit,
+	}
+
+	if len(comments) > limit {
+		result.Comments = comments[:limit]
+		result.NextCursor = result.Comments[len(result.Comments)-1].ID
+	}
+
+	return result, nil
 }
 
-func GetCommentsByUserID(userID, currentUserID string) ([]dto.CommentResponse, error) {
+func GetCommentsByUserID(userID, currentUserID, cursor string, limit int) (*dto.GetCommentsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT c.id, c.post_id, c.user_id, c.content, COALESCE(c.image_path, ''), COALESCE(cs.total_likes, 0), c.created_at, c.is_edited, u.nickname, u.avatar_path
 		FROM comments c
@@ -243,14 +263,20 @@ func GetCommentsByUserID(userID, currentUserID string) ([]dto.CommentResponse, e
 				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
 			))
 		)
-		ORDER BY c.created_at DESC
-	`, userID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
+		AND (
+			? = ''
+			OR c.created_at < (SELECT created_at FROM comments WHERE id = ?)
+			OR (c.created_at = (SELECT created_at FROM comments WHERE id = ?) AND c.id < ?)
+		)
+		ORDER BY c.created_at DESC, c.id DESC
+		LIMIT ?
+	`, userID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	comments := make([]dto.CommentResponse, 0)
+	comments := make([]dto.CommentResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.CommentResponse
 		var isEdited int
@@ -261,5 +287,19 @@ func GetCommentsByUserID(userID, currentUserID string) ([]dto.CommentResponse, e
 		comments = append(comments, item)
 	}
 
-	return comments, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetCommentsResponse{
+		Comments: comments,
+		Limit:    limit,
+	}
+
+	if len(comments) > limit {
+		result.Comments = comments[:limit]
+		result.NextCursor = result.Comments[len(result.Comments)-1].ID
+	}
+
+	return result, nil
 }

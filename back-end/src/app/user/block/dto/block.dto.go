@@ -8,3 +8,9 @@ type BlockedUserResponse struct {
 	AvatarPath string   `json:"avatar_path"`
 	BlockedAt time.Time `json:"blocked_at"`
 }
+
+type GetBlockedUsersResponse struct {
+	Users      []BlockedUserResponse `json:"users"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	Limit      int                   `json:"limit"`
+}

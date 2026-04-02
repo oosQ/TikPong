@@ -14,7 +14,12 @@ func GetBlockedUsersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blockedUsers, err := services.GetBlockedUsers(userCtx.ID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	blockedUsers, err := services.GetBlockedUsers(userCtx.ID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

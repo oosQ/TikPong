@@ -14,12 +14,17 @@ func GetNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
 	unreadOnly := r.URL.Query().Get("unread") == "true"
-	items, err := services.GetNotifications(userCtx.ID, unreadOnly)
+	result, err := services.GetNotifications(userCtx.ID, unreadOnly, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	utils.SendSuccess(w, items, "Notifications retrieved successfully")
+	utils.SendSuccess(w, result, "Notifications retrieved successfully")
 }

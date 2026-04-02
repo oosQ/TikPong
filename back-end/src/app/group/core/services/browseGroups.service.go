@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/group/core/repo"
 )
 
-func BrowseGroups() ([]dto.GroupResponse, error) {
-	return repo.GetGroups()
+func BrowseGroups(cursor string, limit int) (*dto.BrowseGroupsResponse, error) {
+	return repo.GetGroups(cursor, limit)
 }

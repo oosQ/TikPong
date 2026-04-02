@@ -17,6 +17,12 @@ type GroupResponse struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type BrowseGroupsResponse struct {
+	Groups     []GroupResponse `json:"groups"`
+	NextCursor string          `json:"next_cursor,omitempty"`
+	Limit      int             `json:"limit"`
+}
+
 type UpdateGroupRequest struct {
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`

@@ -47,20 +47,26 @@ func RemoveMember(groupID, targetUserID string) error {
    return nil
 }
 
-func ListMembers(groupID string) ([]dto.GroupMemberResponse, error) {
+func ListMembers(groupID, cursor string, limit int) (*dto.ListMembersResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT gm.user_id, u.nickname, u.avatar_path, gm.role
 		FROM group_members gm
 		JOIN users u ON u.id = gm.user_id
 		WHERE gm.group_id = ?
-		ORDER BY gm.created_at ASC
-	`, groupID)
+		AND (
+			? = ''
+			OR gm.created_at > (SELECT created_at FROM group_members WHERE group_id = ? AND user_id = ?)
+			OR (gm.created_at = (SELECT created_at FROM group_members WHERE group_id = ? AND user_id = ?) AND gm.user_id > ?)
+		)
+		ORDER BY gm.created_at ASC, gm.user_id ASC
+		LIMIT ?
+	`, groupID, cursor, groupID, cursor, groupID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.GroupMemberResponse, 0)
+	items := make([]dto.GroupMemberResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.GroupMemberResponse
 		if err := rows.Scan(&item.UserID, &item.Nickname, &item.AvatarPath, &item.Role); err != nil {
@@ -68,5 +74,20 @@ func ListMembers(groupID string) ([]dto.GroupMemberResponse, error) {
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.ListMembersResponse{
+		Members: items,
+		Limit:   limit,
+	}
+
+	if len(items) > limit {
+		result.Members = items[:limit]
+		result.NextCursor = result.Members[len(result.Members)-1].UserID
+	}
+
+	return result, nil
 }

@@ -30,7 +30,7 @@ func GetPostOwnerID(postID string) (string, error) {
 	return userID, nil
 }
 
-func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
+func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
 		FROM posts p
@@ -51,14 +51,20 @@ func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
 				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
 			))
 			)
-		ORDER BY p.created_at DESC
-	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
+			AND (
+				? = ''
+				OR p.created_at < (SELECT created_at FROM posts WHERE id = ?)
+				OR (p.created_at = (SELECT created_at FROM posts WHERE id = ?) AND p.id < ?)
+			)
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	posts := make([]dto.PostSummaryResponse, 0)
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.PostSummaryResponse
 		var isEdited int
@@ -69,7 +75,21 @@ func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
 		posts = append(posts, item)
 	}
 
-	return posts, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetPostsResponse{
+		Posts: posts,
+		Limit: limit,
+	}
+
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+
+	return result, nil
 }
 
 func GetPostByID(postID, currentUserID string) (*dto.PostDetailResponse, error) {

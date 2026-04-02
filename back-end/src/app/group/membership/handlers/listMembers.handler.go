@@ -20,7 +20,12 @@ func ListMembersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	members, err := services.ListMembers(groupID, userCtx.ID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	members, err := services.ListMembers(groupID, userCtx.ID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return

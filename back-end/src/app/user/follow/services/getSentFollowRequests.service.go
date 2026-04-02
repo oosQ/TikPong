@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/user/follow/repo"
 )
 
-func GetSentFollowRequests(currentUserID string) ([]dto.FollowRequestResponse, error) {
-	return repo.GetSentFollowRequests(currentUserID)
+func GetSentFollowRequests(currentUserID, cursor string, limit int) (*dto.GetSentFollowRequestsResponse, error) {
+	return repo.GetSentFollowRequests(currentUserID, cursor, limit)
 }

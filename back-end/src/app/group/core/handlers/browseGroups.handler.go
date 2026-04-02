@@ -7,7 +7,12 @@ import (
 )
 
 func BrowseGroupsHandler(w http.ResponseWriter, r *http.Request) {
-	groups, err := services.BrowseGroups()
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	groups, err := services.BrowseGroups(cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

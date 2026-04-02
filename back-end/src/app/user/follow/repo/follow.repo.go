@@ -90,7 +90,7 @@ func CheckPendingFollowRequestExists(fromUserID, toUserID string) (bool, error) 
 	return count > 0, err
 }
 
-func GetFollowRequests(userID string) ([]dto.FollowRequestReceivedResponse, error) {
+func GetFollowRequests(userID, cursor string, limit int) (*dto.GetFollowRequestsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT fr.requester_id, u.nickname, u.avatar_path, fr.status, fr.created_at
 		FROM follow_requests fr
@@ -101,13 +101,29 @@ func GetFollowRequests(userID string) ([]dto.FollowRequestReceivedResponse, erro
 			WHERE (ub.blocker_id = fr.target_id AND ub.blocked_id = fr.requester_id)
 			   OR (ub.blocker_id = fr.requester_id AND ub.blocked_id = fr.target_id)
 		)
-	`, userID)
+		AND (
+			? = ''
+			OR fr.created_at < (
+				SELECT created_at FROM follow_requests
+				WHERE target_id = ? AND requester_id = ?
+			)
+			OR (
+				fr.created_at = (
+					SELECT created_at FROM follow_requests
+					WHERE target_id = ? AND requester_id = ?
+				)
+				AND fr.requester_id < ?
+			)
+		)
+		ORDER BY fr.created_at DESC, fr.requester_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	requests := make([]dto.FollowRequestReceivedResponse, 0)
+	requests := make([]dto.FollowRequestReceivedResponse, 0, limit+1)
 	for rows.Next() {
 		var requesterID, nickname, avatarPath, status string
 		var createdAt time.Time
@@ -123,7 +139,22 @@ func GetFollowRequests(userID string) ([]dto.FollowRequestReceivedResponse, erro
 			CreatedAt:  createdAt,
 		})
 	}
-	return requests, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetFollowRequestsResponse{
+		Requests: requests,
+		Limit:    limit,
+	}
+
+	if len(requests) > limit {
+		result.Requests = requests[:limit]
+		result.NextCursor = result.Requests[len(result.Requests)-1].FromUserID
+	}
+
+	return result, nil
 }
 
 func IsUserPublic(userID string) (bool, error) {
@@ -135,7 +166,7 @@ func IsUserPublic(userID string) (bool, error) {
 	return isPublic == 1, nil
 }
 
-func GetFollowers(userID string) ([]dto.FollowInfoResponse, error) {
+func GetFollowers(userID, cursor string, limit int) (*dto.GetFollowInfoResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT f.follower_id, u.nickname, u.avatar_path
 		FROM follows f
@@ -146,13 +177,29 @@ func GetFollowers(userID string) ([]dto.FollowInfoResponse, error) {
 			WHERE (ub.blocker_id = f.following_id AND ub.blocked_id = f.follower_id)
 			   OR (ub.blocker_id = f.follower_id AND ub.blocked_id = f.following_id)
 		)
-	`, userID)
+		AND (
+			? = ''
+			OR f.created_at < (
+				SELECT created_at FROM follows
+				WHERE following_id = ? AND follower_id = ?
+			)
+			OR (
+				f.created_at = (
+					SELECT created_at FROM follows
+					WHERE following_id = ? AND follower_id = ?
+				)
+				AND f.follower_id < ?
+			)
+		)
+		ORDER BY f.created_at DESC, f.follower_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	followers := make([]dto.FollowInfoResponse, 0)
+	followers := make([]dto.FollowInfoResponse, 0, limit+1)
 	for rows.Next() {
 		var followerID, nickname, avatarPath string
 		if err := rows.Scan(&followerID, &nickname, &avatarPath); err != nil {
@@ -164,10 +211,25 @@ func GetFollowers(userID string) ([]dto.FollowInfoResponse, error) {
 			AvatarPath: avatarPath,
 		})
 	}
-	return followers, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetFollowInfoResponse{
+		Users: followers,
+		Limit: limit,
+	}
+
+	if len(followers) > limit {
+		result.Users = followers[:limit]
+		result.NextCursor = result.Users[len(result.Users)-1].UserID
+	}
+
+	return result, nil
 }
 
-func GetFollowing(userID string) ([]dto.FollowInfoResponse, error) {
+func GetFollowing(userID, cursor string, limit int) (*dto.GetFollowInfoResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT f.following_id, u.nickname, u.avatar_path
 		FROM follows f
@@ -178,13 +240,29 @@ func GetFollowing(userID string) ([]dto.FollowInfoResponse, error) {
 			WHERE (ub.blocker_id = f.follower_id AND ub.blocked_id = f.following_id)
 			   OR (ub.blocker_id = f.following_id AND ub.blocked_id = f.follower_id)
 		)
-	`, userID)
+		AND (
+			? = ''
+			OR f.created_at < (
+				SELECT created_at FROM follows
+				WHERE follower_id = ? AND following_id = ?
+			)
+			OR (
+				f.created_at = (
+					SELECT created_at FROM follows
+					WHERE follower_id = ? AND following_id = ?
+				)
+				AND f.following_id < ?
+			)
+		)
+		ORDER BY f.created_at DESC, f.following_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	following := make([]dto.FollowInfoResponse, 0)
+	following := make([]dto.FollowInfoResponse, 0, limit+1)
 	for rows.Next() {
 		var followingID, nickname, avatarPath string
 		if err := rows.Scan(&followingID, &nickname, &avatarPath); err != nil {
@@ -196,10 +274,25 @@ func GetFollowing(userID string) ([]dto.FollowInfoResponse, error) {
 			AvatarPath: avatarPath,
 		})
 	}
-	return following, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetFollowInfoResponse{
+		Users: following,
+		Limit: limit,
+	}
+
+	if len(following) > limit {
+		result.Users = following[:limit]
+		result.NextCursor = result.Users[len(result.Users)-1].UserID
+	}
+
+	return result, nil
 }
 
-func GetSentFollowRequests(userID string) ([]dto.FollowRequestResponse, error) {
+func GetSentFollowRequests(userID, cursor string, limit int) (*dto.GetSentFollowRequestsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT fr.target_id, u.nickname, u.avatar_path, fr.status, fr.created_at
 		FROM follow_requests fr
@@ -210,13 +303,29 @@ func GetSentFollowRequests(userID string) ([]dto.FollowRequestResponse, error) {
 			WHERE (ub.blocker_id = fr.requester_id AND ub.blocked_id = fr.target_id)
 			   OR (ub.blocker_id = fr.target_id AND ub.blocked_id = fr.requester_id)
 		)
-	`, userID)
+		AND (
+			? = ''
+			OR fr.created_at < (
+				SELECT created_at FROM follow_requests
+				WHERE requester_id = ? AND target_id = ?
+			)
+			OR (
+				fr.created_at = (
+					SELECT created_at FROM follow_requests
+					WHERE requester_id = ? AND target_id = ?
+				)
+				AND fr.target_id < ?
+			)
+		)
+		ORDER BY fr.created_at DESC, fr.target_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	requests := make([]dto.FollowRequestResponse, 0)
+	requests := make([]dto.FollowRequestResponse, 0, limit+1)
 	for rows.Next() {
 		var targetID, nickname, avatarPath, status string
 		var createdAt time.Time
@@ -232,7 +341,22 @@ func GetSentFollowRequests(userID string) ([]dto.FollowRequestResponse, error) {
 			CreatedAt:   createdAt,
 		})
 	}
-	return requests, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetSentFollowRequestsResponse{
+		Requests: requests,
+		Limit:    limit,
+	}
+
+	if len(requests) > limit {
+		result.Requests = requests[:limit]
+		result.NextCursor = result.Requests[len(result.Requests)-1].TargetID
+	}
+
+	return result, nil
 }
 
 func UpdateFollowRequestStatus(fromUserID, toUserID, status string) error {

@@ -35,18 +35,24 @@ func CreateGroup(groupID, title, description, groupAvatar, creatorID string) (er
 	return err
 }
 
-func GetGroups() ([]dto.GroupResponse, error) {
+func GetGroups(cursor string, limit int) (*dto.BrowseGroupsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT id, title, description, COALESCE(avatar_path, ''), creator_id, created_at
 		FROM groups
-		ORDER BY created_at DESC
-	`)
+		WHERE (
+			? = ''
+			OR created_at < (SELECT created_at FROM groups WHERE id = ?)
+			OR (created_at = (SELECT created_at FROM groups WHERE id = ?) AND id < ?)
+		)
+		ORDER BY created_at DESC, id DESC
+		LIMIT ?
+	`, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.GroupResponse, 0)
+	items := make([]dto.GroupResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.GroupResponse
 		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.GroupAvatar, &item.CreatorID, &item.CreatedAt); err != nil {
@@ -54,7 +60,22 @@ func GetGroups() ([]dto.GroupResponse, error) {
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.BrowseGroupsResponse{
+		Groups: items,
+		Limit:  limit,
+	}
+
+	if len(items) > limit {
+		result.Groups = items[:limit]
+		result.NextCursor = result.Groups[len(result.Groups)-1].ID
+	}
+
+	return result, nil
 }
 
 func DeleteGroup(groupID string) error {

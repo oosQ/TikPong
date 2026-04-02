@@ -7,7 +7,7 @@ import (
 	sharedRepo "social-network/src/app/post/shared/repo"
 )
 
-func GetComments(currentUserID, postID string) ([]dto.CommentResponse, error) {
+func GetComments(currentUserID, postID, cursor string, limit int) (*dto.GetCommentsResponse, error) {
 	canAccess, err := sharedRepo.CanUserAccessPost(postID, currentUserID)
 	if err != nil {
 		return nil, err
@@ -16,5 +16,5 @@ func GetComments(currentUserID, postID string) ([]dto.CommentResponse, error) {
 		return nil, errors.New("post not found or access denied")
 	}
 
-	return repo.GetCommentsByPostID(postID, currentUserID)
+	return repo.GetCommentsByPostID(postID, currentUserID, cursor, limit)
 }

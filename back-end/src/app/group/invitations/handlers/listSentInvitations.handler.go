@@ -14,7 +14,12 @@ func ListSentInvitationsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invitations, err := services.ListSentInvitations(userCtx.ID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	invitations, err := services.ListSentInvitations(userCtx.ID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

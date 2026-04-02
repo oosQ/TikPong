@@ -7,7 +7,7 @@ import (
 	"social-network/src/app/group/shared"
 )
 
-func ListJoinRequests(groupID, userID string) ([]dto.JoinRequestResponse, error) {
+func ListJoinRequests(groupID, userID, cursor string, limit int) (*dto.ListJoinRequestsResponse, error) {
 	isCreator, err := shared.IsGroupOwner(groupID, userID)
 	if err != nil {
 		return nil, err
@@ -15,5 +15,5 @@ func ListJoinRequests(groupID, userID string) ([]dto.JoinRequestResponse, error)
 	if !isCreator {
 		return nil, errors.New("only group creator can list join requests")
 	}
-	return repo.ListJoinRequests(groupID)
+	return repo.ListJoinRequests(groupID, cursor, limit)
 }

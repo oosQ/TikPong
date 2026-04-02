@@ -5,6 +5,6 @@ import (
 	"social-network/src/app/post/core/repo"
 )
 
-func GetPosts(currentUserID string) ([]dto.PostSummaryResponse, error) {
-	return repo.GetPosts(currentUserID)
+func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
+	return repo.GetPosts(currentUserID, cursor, limit)
 }

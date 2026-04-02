@@ -14,11 +14,16 @@ func GetFollowRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-		requests, err := services.GetFollowRequests(userCtx.ID)
-		if err != nil {
-			utils.SendError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		utils.SendSuccess(w, requests, "Follow requests retrieved successfully")
-	
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
 	}
+
+	requests, err := services.GetFollowRequests(userCtx.ID, cursor, limit)
+	if err != nil {
+		utils.SendError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendSuccess(w, requests, "Follow requests retrieved successfully")
+}

@@ -71,7 +71,7 @@ func RespondJoinRequest(groupID, requesterID, status string) (err error) {
 	return nil
 }
 
-func ListJoinRequests(groupID string) ([]dto.JoinRequestResponse, error) {
+func ListJoinRequests(groupID, cursor string, limit int) (*dto.ListJoinRequestsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT
 			gjr.group_id || ':' || gjr.requester_id AS id,
@@ -86,14 +86,29 @@ func ListJoinRequests(groupID string) ([]dto.JoinRequestResponse, error) {
 		JOIN groups g ON g.id = gjr.group_id
 		JOIN users u ON u.id = gjr.requester_id
 		WHERE gjr.group_id = ? AND gjr.status = 'pending'
-		ORDER BY gjr.created_at DESC
-	`, groupID)
+		AND (
+			? = ''
+			OR gjr.created_at < (
+				SELECT created_at FROM group_join_requests
+				WHERE group_id = ? AND status = 'pending' AND (group_id || ':' || requester_id) = ?
+			)
+			OR (
+				gjr.created_at = (
+					SELECT created_at FROM group_join_requests
+					WHERE group_id = ? AND status = 'pending' AND (group_id || ':' || requester_id) = ?
+				)
+				AND (gjr.group_id || ':' || gjr.requester_id) < ?
+			)
+		)
+		ORDER BY gjr.created_at DESC, gjr.requester_id DESC
+		LIMIT ?
+	`, groupID, cursor, groupID, cursor, groupID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.JoinRequestResponse, 0)
+	items := make([]dto.JoinRequestResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.JoinRequestResponse
 		if err := rows.Scan(
@@ -110,10 +125,25 @@ func ListJoinRequests(groupID string) ([]dto.JoinRequestResponse, error) {
 		}
 		items = append(items, item)
 	}
-	return items, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.ListJoinRequestsResponse{
+		Requests: items,
+		Limit:    limit,
+	}
+
+	if len(items) > limit {
+		result.Requests = items[:limit]
+		result.NextCursor = result.Requests[len(result.Requests)-1].ID
+	}
+
+	return result, nil
 }
 
-func ListSentJoinRequests(userID string) ([]dto.SentJoinRequestResponse, error) {
+func ListSentJoinRequests(userID, cursor string, limit int) (*dto.ListSentJoinRequestsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT
 			gjr.group_id || ':' || gjr.requester_id AS id,
@@ -130,14 +160,29 @@ func ListSentJoinRequests(userID string) ([]dto.SentJoinRequestResponse, error) 
 		JOIN groups g ON g.id = gjr.group_id
 		JOIN users gc ON gc.id = g.creator_id
 		WHERE gjr.requester_id = ?
-		ORDER BY gjr.created_at DESC
-	`, userID)
+		AND (
+			? = ''
+			OR gjr.created_at < (
+				SELECT created_at FROM group_join_requests
+				WHERE requester_id = ? AND (group_id || ':' || requester_id) = ?
+			)
+			OR (
+				gjr.created_at = (
+					SELECT created_at FROM group_join_requests
+					WHERE requester_id = ? AND (group_id || ':' || requester_id) = ?
+				)
+				AND (gjr.group_id || ':' || gjr.requester_id) < ?
+			)
+		)
+		ORDER BY gjr.created_at DESC, gjr.group_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.SentJoinRequestResponse, 0)
+	items := make([]dto.SentJoinRequestResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.SentJoinRequestResponse
 		if err := rows.Scan(
@@ -157,5 +202,19 @@ func ListSentJoinRequests(userID string) ([]dto.SentJoinRequestResponse, error) 
 		items = append(items, item)
 	}
 
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.ListSentJoinRequestsResponse{
+		Requests: items,
+		Limit:    limit,
+	}
+
+	if len(items) > limit {
+		result.Requests = items[:limit]
+		result.NextCursor = result.Requests[len(result.Requests)-1].ID
+	}
+
+	return result, nil
 }

@@ -70,7 +70,7 @@ func CancelInvitation(groupID, inviterID, inviteeID string) error {
 	`, groupID, inviteeID, inviterID)
 	return err
 }
-func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
+func ListSentInvitations(userID, cursor string, limit int) (*dto.ListSentInvitationsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT
 			gi.group_id || ':' || gi.invitee_id AS id,
@@ -85,14 +85,29 @@ func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
 		JOIN groups g ON g.id = gi.group_id
 		JOIN users u ON u.id = gi.invitee_id
 		WHERE gi.inviter_id = ? and gi.status = 'pending'
-		ORDER BY gi.created_at DESC
-	`, userID)
+		AND (
+			? = ''
+			OR gi.created_at < (
+				SELECT created_at FROM group_invitations
+				WHERE inviter_id = ? AND status = 'pending' AND (group_id || ':' || invitee_id) = ?
+			)
+			OR (
+				gi.created_at = (
+					SELECT created_at FROM group_invitations
+					WHERE inviter_id = ? AND status = 'pending' AND (group_id || ':' || invitee_id) = ?
+				)
+				AND (gi.group_id || ':' || gi.invitee_id) < ?
+			)
+		)
+		ORDER BY gi.created_at DESC, gi.group_id DESC, gi.invitee_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.SentInvitationResponse, 0)
+	items := make([]dto.SentInvitationResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.SentInvitationResponse
 		if err := rows.Scan(
@@ -110,10 +125,24 @@ func ListSentInvitations(userID string) ([]dto.SentInvitationResponse, error) {
 		items = append(items, item)
 	}
 
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.ListSentInvitationsResponse{
+		Invitations: items,
+		Limit:       limit,
+	}
+
+	if len(items) > limit {
+		result.Invitations = items[:limit]
+		result.NextCursor = result.Invitations[len(result.Invitations)-1].ID
+	}
+
+	return result, nil
 }
 
-func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, error) {
+func ListReceivedInvitations(userID, cursor string, limit int) (*dto.ListReceivedInvitationsResponse, error) {
 	rows, err := database.DB.Query(`
 		SELECT
 			gi.group_id || ':' || gi.invitee_id AS id,
@@ -128,14 +157,29 @@ func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, e
 		JOIN groups g ON g.id = gi.group_id
 		JOIN users u ON u.id = gi.inviter_id
 		WHERE gi.invitee_id = ? and gi.status = 'pending'
-		ORDER BY gi.created_at DESC
-	`, userID)
+		AND (
+			? = ''
+			OR gi.created_at < (
+				SELECT created_at FROM group_invitations
+				WHERE invitee_id = ? AND status = 'pending' AND (group_id || ':' || invitee_id) = ?
+			)
+			OR (
+				gi.created_at = (
+					SELECT created_at FROM group_invitations
+					WHERE invitee_id = ? AND status = 'pending' AND (group_id || ':' || invitee_id) = ?
+				)
+				AND (gi.group_id || ':' || gi.invitee_id) < ?
+			)
+		)
+		ORDER BY gi.created_at DESC, gi.group_id DESC, gi.inviter_id DESC
+		LIMIT ?
+	`, userID, cursor, userID, cursor, userID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	items := make([]dto.ReceivedInvitationResponse, 0)
+	items := make([]dto.ReceivedInvitationResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.ReceivedInvitationResponse
 		if err := rows.Scan(
@@ -153,5 +197,19 @@ func ListReceivedInvitations(userID string) ([]dto.ReceivedInvitationResponse, e
 		items = append(items, item)
 	}
 
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.ListReceivedInvitationsResponse{
+		Invitations: items,
+		Limit:       limit,
+	}
+
+	if len(items) > limit {
+		result.Invitations = items[:limit]
+		result.NextCursor = result.Invitations[len(result.Invitations)-1].ID
+	}
+
+	return result, nil
 }

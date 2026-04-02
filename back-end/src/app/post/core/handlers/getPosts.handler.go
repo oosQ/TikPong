@@ -14,7 +14,12 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 		currentUserID = userCtx.ID
 	}
 
-	posts, err := services.GetPosts(currentUserID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	posts, err := services.GetPosts(currentUserID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

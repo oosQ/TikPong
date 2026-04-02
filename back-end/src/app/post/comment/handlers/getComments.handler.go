@@ -20,7 +20,12 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := services.GetComments(currentUserID, postID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	comments, err := services.GetComments(currentUserID, postID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return

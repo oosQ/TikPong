@@ -24,6 +24,12 @@ type CommentResponse struct {
 	AvatarPath string    `json:"avatar_path"`
 }
 
+type GetCommentsResponse struct {
+	Comments   []CommentResponse `json:"comments"`
+	NextCursor string            `json:"next_cursor,omitempty"`
+	Limit      int               `json:"limit"`
+}
+
 type CommentActionResponse struct {
 	CommentID string `json:"comment_id"`
 	Action    string `json:"action"`

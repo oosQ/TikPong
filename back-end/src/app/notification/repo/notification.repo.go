@@ -15,17 +15,21 @@ func CreateNotification(id, userID, notificationType, title, message string, pay
 	return err
 }
 
-func GetNotifications(userID string, unreadOnly bool) ([]dto.NotificationResponse, error) {
+func GetNotifications(userID string, unreadOnly bool, cursor string, limit int) (*dto.GetNotificationsResponse, error) {
 	query := `
 		SELECT id, type, title, message, COALESCE(payload, ''), is_read, created_at
 		FROM notifications
-		WHERE user_id = ?`
+		WHERE user_id = ?
+		AND (? = '' OR (
+			created_at < (SELECT created_at FROM notifications WHERE id = ?) OR
+			(created_at = (SELECT created_at FROM notifications WHERE id = ?) AND id < ?)
+		))`
 	if unreadOnly {
 		query += ` AND is_read = 0`
 	}
-	query += ` ORDER BY created_at DESC`
+	query += ` ORDER BY created_at DESC, id DESC LIMIT ?`
 
-	rows, err := database.DB.Query(query, userID)
+	rows, err := database.DB.Query(query, userID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +45,16 @@ func GetNotifications(userID string, unreadOnly bool) ([]dto.NotificationRespons
 		item.IsRead = isRead == 1
 		items = append(items, item)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	return items, rows.Err()
+	result := &dto.GetNotificationsResponse{Limit: limit, Notifications: items}
+	if len(items) > limit {
+		result.Notifications = items[:limit]
+		result.NextCursor = result.Notifications[len(result.Notifications)-1].ID
+	}
+	return result, nil
 }
 
 func MarkRead(userID, notificationID string) error {

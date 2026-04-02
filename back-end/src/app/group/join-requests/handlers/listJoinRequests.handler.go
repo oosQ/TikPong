@@ -20,7 +20,12 @@ func ListJoinRequestsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	joinRequests, err := services.ListJoinRequests(groupID, userCtx.ID)
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	joinRequests, err := services.ListJoinRequests(groupID, userCtx.ID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

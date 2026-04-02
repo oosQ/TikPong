@@ -13,6 +13,12 @@ type JoinRequestResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+type ListJoinRequestsResponse struct {
+	Requests   []JoinRequestResponse `json:"requests"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	Limit      int                   `json:"limit"`
+}
+
 type SentJoinRequestResponse struct {
 	ID                 string    `json:"id"`
 	GroupID            string    `json:"group_id"`
@@ -24,4 +30,10 @@ type SentJoinRequestResponse struct {
 	Status             string    `json:"status"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+type ListSentJoinRequestsResponse struct {
+	Requests   []SentJoinRequestResponse `json:"requests"`
+	NextCursor string                    `json:"next_cursor,omitempty"`
+	Limit      int                       `json:"limit"`
 }
