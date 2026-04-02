@@ -5,18 +5,23 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 func SaveUploadedImage(r *http.Request) (string, error) {
-	return saveUploadedImage(r, "avatar_path", "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg")
+	return saveUploadedImage(r, "avatar_path", "./uploads/avatars", "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg")
 }
 
 func SaveUploadedPostImage(r *http.Request) (string, error) {
-	return saveUploadedImage(r, "image_path", "")
+	return saveUploadedImage(r, "image_path", "./uploads/posts", "")
 }
 
-func saveUploadedImage(r *http.Request, fieldName, defaultImagePath string) (string, error) {
+func SaveUploadedCommentImage(r *http.Request) (string, error) {
+	return saveUploadedImage(r, "image_path", "./uploads/comments", "")
+}
+
+func saveUploadedImage(r *http.Request, fieldName, uploadDir, defaultImagePath string) (string, error) {
 	var imagePath string
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "multipart/form-data") {
@@ -60,8 +65,12 @@ func saveUploadedImage(r *http.Request, fieldName, defaultImagePath string) (str
 		return "", errors.New("failed to generate image ID")
 	}
 
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		return "", errors.New("failed to prepare upload directory")
+	}
+
 	filename := imageID + "_" + header.Filename
-	imagePath = "./uploads/avatars/" + filename
+	imagePath = filepath.ToSlash(filepath.Join(uploadDir, filename))
 
 	outFile, err := os.Create(imagePath)
 	if err != nil {
