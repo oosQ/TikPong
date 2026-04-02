@@ -6,7 +6,7 @@ type Post struct {
 	Title     string    `db:"title"`
     Content   string    `db:"content"`
 	UserID    string    `db:"user_id"`
-	Privacy   string    `db:"privacy"` // public, friends, private
+	Privacy   string    `db:"privacy"` 
 	IsEdited  bool      `db:"is_edited"`
 	EditedAt  time.Time `db:"edited_at"`
     ImagePath string    `db:"image_path"`
