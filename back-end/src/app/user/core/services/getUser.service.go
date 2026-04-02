@@ -6,8 +6,8 @@ import (
 	"social-network/src/app/user/core/repo"
 )
 
-func GetUser(userID string) (*dto.UserProfileResponse, error) {
-	user, err := repo.GetUserByID(userID)
+func GetUser(currentUserID, userID string) (*dto.UserProfileResponse, error) {
+	user, err := repo.GetUserByID(userID, currentUserID)
 	if err != nil {
 		return nil, err
 	}

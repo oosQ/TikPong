@@ -14,7 +14,7 @@ func GetMeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := services.GetUser(userCtx.ID)
+	user, err := services.GetUser(userCtx.ID, userCtx.ID)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusNotFound)
 		return

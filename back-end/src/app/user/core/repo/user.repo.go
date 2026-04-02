@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
+func GetUserByID(userID, currentUserID string) (*dto.UserProfileResponse, error) {
 	var u dto.UserProfileResponse
 	var isPublic int
 	err := database.DB.QueryRow(`
@@ -16,7 +16,12 @@ func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
 		FROM users u
 		LEFT JOIN user_summary us ON us.user_id = u.id
 		WHERE u.id = ?
-	`, userID).Scan(
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks ub
+			WHERE (ub.blocker_id = ? AND ub.blocked_id = u.id)
+			   OR (ub.blocker_id = u.id AND ub.blocked_id = ?)
+		)
+	`, userID, currentUserID, currentUserID).Scan(
 		&u.ID, &u.Nickname, &u.FirstName, &u.LastName, &u.AboutMe, &u.AvatarPath,
 		&isPublic, &u.TotalPosts, &u.TotalFollowers, &u.TotalFollowing, &u.CreatedAt,
 	)
