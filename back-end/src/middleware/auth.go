@@ -30,6 +30,26 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func WithOptionalAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := GetCurrentUser(r)
+		if user == nil {
+			next(w, r)
+			return
+		}
+
+		userCtx := &models.UserContext{
+			ID:         user.ID,
+			Nickname:   user.Nickname,
+			Email:      user.Email,
+			AvatarPath: user.AvatarPath,
+			Role:       user.Role,
+		}
+
+		next(w, r.WithContext(context.WithValue(r.Context(), "user_data", userCtx)))
+	}
+}
+
 
 func GetCurrentUser(r *http.Request) *models.User {
 	cookie, err := r.Cookie("session_id")
