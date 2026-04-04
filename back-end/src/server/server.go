@@ -3,20 +3,27 @@ package server
 import (
 	"log"
 	"net/http"
-	"social-network/src/app/user/follow"
-	post "social-network/src/app/post/core"
-	"social-network/src/app/user/auth"
+	"social-network/src/app/chat"
+	"social-network/src/app/group"
+	"social-network/src/app/notification"
+	 "social-network/src/app/post"
+	"social-network/src/app/user"
 	database "social-network/src/db"
+	"social-network/src/utils"
 )
 
 func Serverinit() {
 	database.InitDB()
 	defer database.DB.Close()
-
-	auth.Init()
+	user.Init()
 	post.Init()
-	follow.Init()
+	group.Init()
+	chat.Init()
+	notification.Init()
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		utils.SendError(w, "Endpoint not found", http.StatusNotFound)
+	})
 	log.Println("Server starting on: http://localhost:8433/")
 	err := http.ListenAndServe(":8433", nil)
 	if err != nil {
