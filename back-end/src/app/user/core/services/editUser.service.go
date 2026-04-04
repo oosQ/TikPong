@@ -7,7 +7,7 @@ import (
 )
 
 func EditUser(userID string, req dto.EditUserRequest) error {
-	user, err := repo.GetUserByID(userID, userID)
+	user, err := repo.GetUserByID(userID)
 	if err != nil {
 		return err
 	}

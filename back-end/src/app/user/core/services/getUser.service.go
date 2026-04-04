@@ -7,7 +7,7 @@ import (
 )
 
 func GetUser(currentUserID, userID string) (*dto.UserProfileResponse, error) {
-	user, err := repo.GetUserByID(userID, currentUserID)
+	user, err := repo.GetUserProfileByID(userID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
