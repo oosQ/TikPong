@@ -9,6 +9,7 @@ import (
 	 "social-network/src/app/post"
 	"social-network/src/app/user"
 	database "social-network/src/db"
+	"social-network/src/middleware"
 	"social-network/src/utils"
 )
 
@@ -25,7 +26,7 @@ func Serverinit() {
 		utils.SendError(w, "Endpoint not found", http.StatusNotFound)
 	})
 	log.Println("Server starting on: http://localhost:8433/")
-	err := http.ListenAndServe(":8433", nil)
+	err := http.ListenAndServe(":8433", middleware.CORS(http.DefaultServeMux))
 	if err != nil {
 		log.Fatal(err)
 	}
