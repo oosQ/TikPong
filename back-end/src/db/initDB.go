@@ -3,6 +3,9 @@ package database
 import (
 	"database/sql"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -11,7 +14,22 @@ var DB *sql.DB
 
 func InitDB() {
 	var err error
-	DB, err = sql.Open("sqlite3", "database.db")
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "data/database.db"
+	}
+
+	isNewDatabase, err := isNewSQLiteDatabase(dbPath)
+	if err != nil {
+		log.Fatal("Error preparing DB path:", err)
+	}
+	if isNewDatabase {
+		if err = cleanupUploadedImages(); err != nil {
+			log.Fatal("Error cleaning uploads for new DB:", err)
+		}
+	}
+
+	DB, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,6 +49,48 @@ func InitDB() {
 
 	
 	go cleanupExpiredSessions()
+}
+
+func isNewSQLiteDatabase(dbPath string) (bool, error) {
+	if dbPath == "" || dbPath == ":memory:" || strings.HasPrefix(dbPath, "file:") {
+		return false, nil
+	}
+
+	dbDir := filepath.Dir(dbPath)
+	if dbDir != "." {
+		if err := os.MkdirAll(dbDir, 0o755); err != nil {
+			return false, err
+		}
+	}
+
+	_, err := os.Stat(dbPath)
+	if err == nil {
+		return false, nil
+	}
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+
+	return false, err
+}
+
+func cleanupUploadedImages() error {
+	uploadDirs := []string{
+		"uploads/avatars",
+		"uploads/comments",
+		"uploads/posts",
+	}
+
+	for _, dir := range uploadDirs {
+		if err := os.RemoveAll(dir); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func cleanupExpiredSessions() {
