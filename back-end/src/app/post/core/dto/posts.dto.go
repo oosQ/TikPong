@@ -21,12 +21,13 @@ type EditPostRequest struct {
 }
 
 type PostSummaryResponse struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Privacy   string    `json:"privacy"`
-	ImagePath string    `json:"image_path"`
+	ID            string    `json:"id"`
+	UserID        string    `json:"user_id"`
+	Title         string    `json:"title"`
+	Content       string    `json:"content"`
+	Privacy       string    `json:"privacy"`
+	ImagePath     string    `json:"image_path"`
+	Hashtags      []string  `json:"hashtags,omitempty"`
 	TotalLikes    int       `json:"total_likes"`
 	TotalViews    int       `json:"total_views"`
 	TotalComments int       `json:"total_comments"`
@@ -35,6 +36,12 @@ type PostSummaryResponse struct {
 }
 
 type GetPostsResponse struct {
+	Posts      []PostSummaryResponse `json:"posts"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	Limit      int                   `json:"limit"`
+}
+
+type SearchPostsResponse struct {
 	Posts      []PostSummaryResponse `json:"posts"`
 	NextCursor string                `json:"next_cursor,omitempty"`
 	Limit      int                   `json:"limit"`

@@ -24,6 +24,15 @@ func Init() {
 		}
 	}))
 
+	http.HandleFunc("/api/posts/search", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.SearchPostsHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
 	http.HandleFunc("/api/posts/{postId}", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:

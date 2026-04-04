@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"social-network/src/app/post/core/dto"
 	database "social-network/src/db"
+	"strings"
 	"time"
 )
 
@@ -32,7 +33,15 @@ func GetPostOwnerID(postID string) (string, error) {
 
 func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
+		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h.name, '|||')
+			       FROM post_hashtags ph
+			       JOIN hashtags h ON h.id = ph.hashtag_id
+			       WHERE ph.post_id = p.id
+			       ORDER BY h.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
 		FROM posts p
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
 		WHERE
@@ -68,8 +77,12 @@ func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, e
 	for rows.Next() {
 		var item dto.PostSummaryResponse
 		var isEdited int
-		if err := rows.Scan(&item.ID, &item.UserID, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &isEdited, &item.CreatedAt); err != nil {
+		var hashtags string
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &isEdited, &item.CreatedAt); err != nil {
 			return nil, err
+		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
 		}
 		item.IsEdited = isEdited == 1
 		posts = append(posts, item)
@@ -257,4 +270,62 @@ func EditPostTx(postID, title, content, privacy, imagePath string, hashtags []st
 	}
 
 	return nil
+}
+
+func SearchPosts(currentUserID, query, cursor string, limit int) (*dto.SearchPostsResponse, error) {
+	searchPattern := "%" + query + "%"
+	rows, err := database.DB.Query(`
+		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
+		FROM posts p
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE
+			(LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))
+			AND NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+				p.privacy = 'public'
+				OR p.user_id = ?
+				OR (p.privacy = 'almost_private' AND EXISTS (
+					SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+				))
+				OR (p.privacy = 'private' AND EXISTS (
+					SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+				))
+			)
+			AND (
+				? = ''
+				OR p.created_at < (SELECT created_at FROM posts WHERE id = ?)
+				OR (p.created_at = (SELECT created_at FROM posts WHERE id = ?) AND p.id < ?)
+			)
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	`, searchPattern, searchPattern, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
+	for rows.Next() {
+		var item dto.PostSummaryResponse
+		var isEdited int
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &isEdited, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		item.IsEdited = isEdited == 1
+		posts = append(posts, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.SearchPostsResponse{Limit: limit, Posts: posts}
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+	return result, nil
 }
