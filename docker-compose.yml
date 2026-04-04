@@ -1,0 +1,14 @@
+services:
+  backend:
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    container_name: social-network-backend
+    ports:
+      - "8433:8433"
+    environment:
+      - DB_PATH=/app/data/database.db
+    volumes:
+      - ./back-end/uploads:/app/uploads
+      - ./back-end/data:/app/data
+    restart: unless-stopped
