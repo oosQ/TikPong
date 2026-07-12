@@ -3,7 +3,8 @@ package dto
 import "time"
 
 type SendMessageRequest struct {
-	Content string `json:"content"`
+	Content   string `json:"content"`
+	ImagePath string `json:"image_path,omitempty"`
 }
 
 type PrivateMessageResponse struct {
@@ -11,6 +12,7 @@ type PrivateMessageResponse struct {
 	SenderID    string    `json:"sender_id"`
 	RecipientID string    `json:"recipient_id"`
 	Content     string    `json:"content"`
+	ImagePath   string    `json:"image_path,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -21,13 +23,14 @@ type GetPrivateMessagesResponse struct {
 }
 
 type GroupMessageResponse struct {
-	ID        string    `json:"id"`
-	GroupID   string    `json:"group_id"`
-	SenderID  string    `json:"sender_id"`
-	Nickname  string    `json:"nickname"`
+	ID         string    `json:"id"`
+	GroupID    string    `json:"group_id"`
+	SenderID   string    `json:"sender_id"`
+	Nickname   string    `json:"nickname"`
 	AvatarPath string    `json:"avatar_path"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
+	Content    string    `json:"content"`
+	ImagePath  string    `json:"image_path,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type GetGroupMessagesResponse struct {
@@ -45,6 +48,7 @@ type PrivateConversationResponse struct {
 	LastMessage   string    `json:"last_message"`
 	LastMessageAt time.Time `json:"last_message_at"`
 	LastSenderID  string    `json:"last_sender_id"`
+	UnreadCount   int       `json:"unread_count"`
 }
 
 type GetPrivateConversationsResponse struct {
@@ -54,14 +58,14 @@ type GetPrivateConversationsResponse struct {
 }
 
 type GroupConversationResponse struct {
-	GroupID       string    `json:"group_id"`
-	GroupTitle    string    `json:"group_title"`
-	GroupAvatar   string    `json:"group_avatar"`
-	LastMessage   *string   `json:"last_message"`
-	LastMessageAt *time.Time `json:"last_message_at"`
-	LastSenderID  string    `json:"last_sender_id"`
-	LastSender    string    `json:"last_sender"`
-	LastSenderAvatarPath string `json:"last_sender_avatar_path"`
+	GroupID              string     `json:"group_id"`
+	GroupTitle           string     `json:"group_title"`
+	GroupAvatar          string     `json:"group_avatar"`
+	LastMessage          *string    `json:"last_message"`
+	LastMessageAt        *time.Time `json:"last_message_at"`
+	LastSenderID         string     `json:"last_sender_id"`
+	LastSender           string     `json:"last_sender"`
+	LastSenderAvatarPath string     `json:"last_sender_avatar_path"`
 }
 
 type GetGroupConversationsResponse struct {

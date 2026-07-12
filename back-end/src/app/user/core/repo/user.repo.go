@@ -4,16 +4,35 @@ import (
 	"database/sql"
 	"social-network/src/app/user/core/dto"
 	database "social-network/src/db"
+	"strings"
 	"time"
 )
+
+func GetUserDisplayName(userID string) string {
+	var nickname, firstName, lastName sql.NullString
+	err := database.DB.QueryRow(`SELECT nickname, first_name, last_name FROM users WHERE id = ?`, userID).Scan(&nickname, &firstName, &lastName)
+	if err != nil {
+		return ""
+	}
+	fullName := strings.TrimSpace(firstName.String + " " + lastName.String)
+	if fullName != "" {
+		return fullName
+	}
+	if nickname.String != "" {
+		return nickname.String
+	}
+	return ""
+}
+
 func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
-	 var Nickname, FirstName, LastName, AboutMe sql.NullString
-	 var IsPublic int
+	var Nickname, FirstName, LastName, AboutMe sql.NullString
+	var AvatarPath sql.NullString
+	var IsPublic int
 	err := database.DB.QueryRow(`
 		SELECT id, nickname, first_name, last_name, about_me, avatar_path, is_public
 		FROM users
 		WHERE id = ?
-	`, userID).Scan(&userID, &Nickname, &FirstName, &LastName, &AboutMe, &IsPublic)
+	`, userID).Scan(&userID, &Nickname, &FirstName, &LastName, &AboutMe, &AvatarPath, &IsPublic)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -21,12 +40,13 @@ func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
 		return nil, err
 	}
 	return &dto.UserProfileResponse{
-		ID:        userID,
-		Nickname:  Nickname.String,
-		FirstName: FirstName.String,
-		LastName:  LastName.String,
-		AboutMe:   AboutMe.String,
-		IsPublic:  IsPublic == 1,
+		ID:         userID,
+		Nickname:   Nickname.String,
+		FirstName:  FirstName.String,
+		LastName:   LastName.String,
+		AboutMe:    AboutMe.String,
+		AvatarPath: AvatarPath.String,
+		IsPublic:   IsPublic == 1,
 	}, nil
 }
 func GetUserProfileByID(userID, currentUserID string) (*dto.UserProfileResponse, error) {
@@ -63,6 +83,21 @@ func UpdateUser(userID, nickname, firstName, lastName, aboutMe string, isPublic 
 		UPDATE users SET nickname = ?, first_name = ?, last_name = ?, about_me = ?, is_public = ?, updated_at = ? WHERE id = ?
 	`, nickname, firstName, lastName, aboutMe, isPublic, time.Now(), userID)
 	return err
+}
+
+func CheckNicknameExistsForOtherUser(userID, nickname string) (bool, error) {
+	var count int
+	err := database.DB.QueryRow(`
+		SELECT COUNT(*)
+		FROM users
+		WHERE id != ?
+		AND LOWER(TRIM(COALESCE(nickname, ''))) = LOWER(TRIM(?))
+	`, userID, strings.TrimSpace(nickname)).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func UpdateUserAvatar(userID, avatarPath string) error {

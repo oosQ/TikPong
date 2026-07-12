@@ -33,7 +33,17 @@ func GetPostOwnerID(postID string) (string, error) {
 
 func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
 		       COALESCE((
 			       SELECT GROUP_CONCAT(h.name, '|||')
 			       FROM post_hashtags ph
@@ -41,8 +51,11 @@ func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, e
 			       WHERE ph.post_id = p.id
 			       ORDER BY h.name ASC
 		       ), ''),
-		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0),
+		       p.is_edited, p.created_at
 		FROM posts p
+		LEFT JOIN users u ON u.id = p.user_id
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
 		WHERE
 			NOT EXISTS (
@@ -67,7 +80,7 @@ func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, e
 			)
 		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +91,348 @@ func GetPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, e
 		var item dto.PostSummaryResponse
 		var isEdited int
 		var hashtags string
-		if err := rows.Scan(&item.ID, &item.UserID, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &isEdited, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
+		}
+		item.IsEdited = isEdited == 1
+		posts = append(posts, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetPostsResponse{
+		Posts: posts,
+		Limit: limit,
+	}
+
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+
+	return result, nil
+}
+
+func GetExplorePosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
+	rows, err := database.DB.Query(`
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       0,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h.name, '|||')
+			       FROM post_hashtags ph
+			       JOIN hashtags h ON h.id = ph.hashtag_id
+			       WHERE ph.post_id = p.id
+			       ORDER BY h.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0),
+		       p.is_edited, p.created_at
+		FROM posts p
+		LEFT JOIN users u ON u.id = p.user_id
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE p.privacy = 'public'
+			AND p.user_id <> ?
+			AND NOT EXISTS (
+				SELECT 1 FROM follows f
+				WHERE f.follower_id = ? AND f.following_id = p.user_id
+			)
+			AND NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+				? = ''
+				OR p.created_at < (SELECT created_at FROM posts WHERE id = ?)
+				OR (p.created_at = (SELECT created_at FROM posts WHERE id = ?) AND p.id < ?)
+			)
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
+	for rows.Next() {
+		var item dto.PostSummaryResponse
+		var isEdited int
+		var hashtags string
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
+		}
+		item.IsEdited = isEdited == 1
+		posts = append(posts, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetPostsResponse{
+		Posts: posts,
+		Limit: limit,
+	}
+
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+
+	return result, nil
+}
+
+func GetPostsByUserID(userID, currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
+	rows, err := database.DB.Query(`
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h.name, '|||')
+			       FROM post_hashtags ph
+			       JOIN hashtags h ON h.id = ph.hashtag_id
+			       WHERE ph.post_id = p.id
+			       ORDER BY h.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0),
+		       p.is_edited, p.created_at
+		FROM posts p
+		LEFT JOIN users u ON u.id = p.user_id
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE p.user_id = ?
+			AND NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+				p.privacy = 'public'
+				OR p.user_id = ?
+				OR (p.privacy = 'almost_private' AND EXISTS (
+					SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+				))
+				OR (p.privacy = 'private' AND EXISTS (
+					SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+				))
+			)
+			AND (
+				? = ''
+				OR p.created_at < (SELECT created_at FROM posts WHERE id = ?)
+				OR (p.created_at = (SELECT created_at FROM posts WHERE id = ?) AND p.id < ?)
+			)
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, userID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
+	for rows.Next() {
+		var item dto.PostSummaryResponse
+		var isEdited int
+		var hashtags string
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
+		}
+		item.IsEdited = isEdited == 1
+		posts = append(posts, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetPostsResponse{
+		Posts: posts,
+		Limit: limit,
+	}
+
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+
+	return result, nil
+}
+
+func GetCurrentUserLikedPosts(currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
+	rows, err := database.DB.Query(`
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       1,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h.name, '|||')
+			       FROM post_hashtags ph
+			       JOIN hashtags h ON h.id = ph.hashtag_id
+			       WHERE ph.post_id = p.id
+			       ORDER BY h.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0),
+		       p.is_edited, p.created_at
+		FROM likes_post lp
+		JOIN posts p ON p.id = lp.post_id
+		LEFT JOIN users u ON u.id = p.user_id
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE lp.user_id = ?
+			AND NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+				p.privacy = 'public'
+				OR p.user_id = ?
+				OR (p.privacy = 'almost_private' AND EXISTS (
+					SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+				))
+				OR (p.privacy = 'private' AND EXISTS (
+					SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+				))
+			)
+			AND (
+				? = ''
+				OR lp.created_at < (SELECT created_at FROM likes_post WHERE post_id = ? AND user_id = ?)
+				OR (lp.created_at = (SELECT created_at FROM likes_post WHERE post_id = ? AND user_id = ?) AND p.id < ?)
+			)
+		ORDER BY lp.created_at DESC, p.id DESC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, currentUserID, cursor, currentUserID, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
+	for rows.Next() {
+		var item dto.PostSummaryResponse
+		var isEdited int
+		var hashtags string
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
+		}
+		item.IsEdited = isEdited == 1
+		posts = append(posts, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := &dto.GetPostsResponse{
+		Posts: posts,
+		Limit: limit,
+	}
+
+	if len(posts) > limit {
+		result.Posts = posts[:limit]
+		result.NextCursor = result.Posts[len(result.Posts)-1].ID
+	}
+
+	return result, nil
+}
+
+func GetRepostedPostsByUserID(userID, currentUserID, cursor string, limit int) (*dto.GetPostsResponse, error) {
+	rows, err := database.DB.Query(`
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp2 WHERE rp2.user_id = ? AND rp2.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h.name, '|||')
+			       FROM post_hashtags ph
+			       JOIN hashtags h ON h.id = ph.hashtag_id
+			       WHERE ph.post_id = p.id
+			       ORDER BY h.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp3 WHERE rp3.post_id = p.id), 0),
+		       p.is_edited, rp.created_at
+		FROM reposts_post rp
+		JOIN posts p ON p.id = rp.post_id
+		LEFT JOIN users u ON u.id = p.user_id
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE rp.user_id = ?
+			AND NOT EXISTS (
+				SELECT 1 FROM user_blocks ub
+				WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
+				   OR (ub.blocker_id = p.user_id AND ub.blocked_id = ?)
+			)
+			AND (
+				p.privacy = 'public'
+				OR p.user_id = ?
+				OR (p.privacy = 'almost_private' AND EXISTS (
+					SELECT 1 FROM follows WHERE follower_id = ? AND following_id = p.user_id
+				))
+				OR (p.privacy = 'private' AND EXISTS (
+					SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
+				))
+			)
+			AND (
+				? = ''
+				OR rp.created_at < (SELECT created_at FROM reposts_post WHERE post_id = ? AND user_id = ?)
+				OR (rp.created_at = (SELECT created_at FROM reposts_post WHERE post_id = ? AND user_id = ?) AND p.id < ?)
+			)
+		ORDER BY rp.created_at DESC, p.id DESC
+		LIMIT ?
+	`, currentUserID, currentUserID, currentUserID, userID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, userID, cursor, userID, cursor, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]dto.PostSummaryResponse, 0, limit+1)
+	for rows.Next() {
+		var item dto.PostSummaryResponse
+		var isEdited int
+		var hashtags string
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &hashtags, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		if hashtags != "" {
@@ -109,8 +463,17 @@ func GetPostByID(postID, currentUserID string) (*dto.PostDetailResponse, error) 
 	var post dto.PostDetailResponse
 	var isEdited int
 	err := database.DB.QueryRow(`
-		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0), p.is_edited, p.created_at
 		FROM posts p
+		LEFT JOIN users u ON u.id = p.user_id
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
 		WHERE p.id = ?
 		AND NOT EXISTS (
@@ -128,7 +491,7 @@ func GetPostByID(postID, currentUserID string) (*dto.PostDetailResponse, error) 
 				SELECT 1 FROM post_viewers WHERE post_id = p.id AND viewer_id = ?
 			))
 		)
-	`, postID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID).Scan(&post.ID, &post.UserID, &post.Title, &post.Content, &post.Privacy, &post.ImagePath, &post.TotalLikes, &post.TotalViews, &post.TotalComments, &isEdited, &post.CreatedAt)
+	`, currentUserID, currentUserID, postID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID).Scan(&post.ID, &post.UserID, &post.Nickname, &post.AvatarPath, &post.IsLiked, &post.IsReposted, &post.Title, &post.Content, &post.Privacy, &post.ImagePath, &post.TotalLikes, &post.TotalViews, &post.TotalComments, &post.TotalReposts, &isEdited, &post.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -275,8 +638,20 @@ func EditPostTx(postID, title, content, privacy, imagePath string, hashtags []st
 func SearchPosts(currentUserID, query, cursor string, limit int) (*dto.SearchPostsResponse, error) {
 	searchPattern := "%" + query + "%"
 	rows, err := database.DB.Query(`
-		SELECT p.id, p.user_id, p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0), p.is_edited, p.created_at
+		SELECT p.id, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.title, p.content, p.privacy, COALESCE(p.image_path, ''), COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0), p.is_edited, p.created_at
 		FROM posts p
+		LEFT JOIN users u ON u.id = p.user_id
 		LEFT JOIN posts_summary ps ON ps.post_id = p.id
 		WHERE
 			(LOWER(p.title) LIKE LOWER(?) OR LOWER(p.content) LIKE LOWER(?))
@@ -302,7 +677,7 @@ func SearchPosts(currentUserID, query, cursor string, limit int) (*dto.SearchPos
 			)
 		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	`, searchPattern, searchPattern, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	`, currentUserID, currentUserID, currentUserID, searchPattern, searchPattern, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +687,7 @@ func SearchPosts(currentUserID, query, cursor string, limit int) (*dto.SearchPos
 	for rows.Next() {
 		var item dto.PostSummaryResponse
 		var isEdited int
-		if err := rows.Scan(&item.ID, &item.UserID, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &isEdited, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.UserID, &item.Nickname, &item.AvatarPath, &item.IsFollowing, &item.IsLiked, &item.IsReposted, &item.Title, &item.Content, &item.Privacy, &item.ImagePath, &item.TotalLikes, &item.TotalViews, &item.TotalComments, &item.TotalReposts, &isEdited, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		item.IsEdited = isEdited == 1

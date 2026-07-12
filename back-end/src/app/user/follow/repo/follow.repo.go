@@ -168,7 +168,7 @@ func IsUserPublic(userID string) (bool, error) {
 
 func GetFollowers(userID, cursor string, limit int) (*dto.GetFollowInfoResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT f.follower_id, u.nickname, u.avatar_path
+		SELECT f.follower_id, u.nickname, u.first_name, u.last_name, u.avatar_path
 		FROM follows f
 		JOIN users u ON u.id = f.follower_id
 		WHERE f.following_id = ?
@@ -201,13 +201,15 @@ func GetFollowers(userID, cursor string, limit int) (*dto.GetFollowInfoResponse,
 
 	followers := make([]dto.FollowInfoResponse, 0, limit+1)
 	for rows.Next() {
-		var followerID, nickname, avatarPath string
-		if err := rows.Scan(&followerID, &nickname, &avatarPath); err != nil {
+		var followerID, nickname, firstName, lastName, avatarPath string
+		if err := rows.Scan(&followerID, &nickname, &firstName, &lastName, &avatarPath); err != nil {
 			return nil, err
 		}
 		followers = append(followers, dto.FollowInfoResponse{
 			UserID:     followerID,
 			Nickname:   nickname,
+			FirstName:  firstName,
+			LastName:   lastName,
 			AvatarPath: avatarPath,
 		})
 	}
@@ -231,7 +233,7 @@ func GetFollowers(userID, cursor string, limit int) (*dto.GetFollowInfoResponse,
 
 func GetFollowing(userID, cursor string, limit int) (*dto.GetFollowInfoResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT f.following_id, u.nickname, u.avatar_path
+		SELECT f.following_id, u.nickname, u.first_name, u.last_name, u.avatar_path
 		FROM follows f
 		JOIN users u ON u.id = f.following_id
 		WHERE f.follower_id = ?
@@ -264,13 +266,15 @@ func GetFollowing(userID, cursor string, limit int) (*dto.GetFollowInfoResponse,
 
 	following := make([]dto.FollowInfoResponse, 0, limit+1)
 	for rows.Next() {
-		var followingID, nickname, avatarPath string
-		if err := rows.Scan(&followingID, &nickname, &avatarPath); err != nil {
+		var followingID, nickname, firstName, lastName, avatarPath string
+		if err := rows.Scan(&followingID, &nickname, &firstName, &lastName, &avatarPath); err != nil {
 			return nil, err
 		}
 		following = append(following, dto.FollowInfoResponse{
 			UserID:     followingID,
 			Nickname:   nickname,
+			FirstName:  firstName,
+			LastName:   lastName,
 			AvatarPath: avatarPath,
 		})
 	}

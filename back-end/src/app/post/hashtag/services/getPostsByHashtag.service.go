@@ -6,8 +6,8 @@ import (
 	"social-network/src/app/post/hashtag/repo"
 )
 
-func GetPostsByHashtag(hashtagID, currentUserID, cursor string, limit int) (*dto.GetPostsByHashtagResponse, error) {
-	exists, err := repo.HashtagExists(hashtagID)
+func GetPostsByHashtag(hashtagName, currentUserID, cursor string, limit int) (*dto.GetPostsByHashtagResponse, error) {
+	exists, err := repo.HashtagExistsByName(hashtagName)
 	if err != nil {
 		return nil, err
 	}
@@ -15,5 +15,5 @@ func GetPostsByHashtag(hashtagID, currentUserID, cursor string, limit int) (*dto
 		return nil, errors.New("hashtag not found")
 	}
 
-	return repo.GetPostsByHashtagID(hashtagID, currentUserID, cursor, limit)
+	return repo.GetPostsByHashtagName(hashtagName, currentUserID, cursor, limit)
 }

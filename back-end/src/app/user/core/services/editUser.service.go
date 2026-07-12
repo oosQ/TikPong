@@ -4,6 +4,7 @@ import (
 	"errors"
 	"social-network/src/app/user/core/dto"
 	"social-network/src/app/user/core/repo"
+	"strings"
 )
 
 func EditUser(userID string, req dto.EditUserRequest) error {
@@ -22,7 +23,7 @@ func EditUser(userID string, req dto.EditUserRequest) error {
 	isPublic := user.IsPublic
 
 	if req.Nickname != "" {
-		nickname = req.Nickname
+		nickname = strings.TrimSpace(req.Nickname)
 	}
 	if req.FirstName != "" {
 		firstName = req.FirstName
@@ -35,6 +36,16 @@ func EditUser(userID string, req dto.EditUserRequest) error {
 	}
 	if req.IsPublic != nil {
 		isPublic = *req.IsPublic
+	}
+
+	if nickname != "" {
+		exists, err := repo.CheckNicknameExistsForOtherUser(userID, nickname)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return errors.New("nickname already exists")
+		}
 	}
 
 	return repo.UpdateUser(userID, nickname, firstName, lastName, aboutMe, isPublic)

@@ -31,4 +31,12 @@ func Init() {
 		}
 		utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}))
+
+	http.HandleFunc("/api/notifications/unread-count", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			handlers.GetUnreadCountHandler(w, r)
+			return
+		}
+		utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
 }

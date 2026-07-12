@@ -88,3 +88,14 @@ func NotificationExists(userID, notificationID string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+func GetUnreadCount(userID string) (int, error) {
+	var count int
+	err := database.DB.QueryRow(`
+		SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0
+	`, userID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

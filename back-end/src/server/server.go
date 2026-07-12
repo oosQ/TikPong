@@ -22,6 +22,8 @@ func Serverinit() {
 	chat.Init()
 	notification.Init()
 
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		utils.SendError(w, "Endpoint not found", http.StatusNotFound)
 	})

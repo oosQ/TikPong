@@ -14,9 +14,9 @@ func GetPostsByHashtagHandler(w http.ResponseWriter, r *http.Request) {
 		currentUserID = userCtx.ID
 	}
 
-	hashtagID := r.PathValue("hashtagId")
-	if hashtagID == "" {
-		utils.SendError(w, "Missing hashtagId parameter", http.StatusBadRequest)
+	hashtagName := r.PathValue("hashtagName")
+	if hashtagName == "" {
+		utils.SendError(w, "Missing hashtagName parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -25,7 +25,7 @@ func GetPostsByHashtagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	posts, err := services.GetPostsByHashtag(hashtagID, currentUserID, cursor, limit)
+	posts, err := services.GetPostsByHashtag(hashtagName, currentUserID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return

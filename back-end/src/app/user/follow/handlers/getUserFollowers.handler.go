@@ -1,0 +1,35 @@
+package handlers
+
+import (
+	"net/http"
+	"social-network/src/app/user/follow/services"
+	"social-network/src/models"
+	"social-network/src/utils"
+)
+
+func GetUserFollowersHandler(w http.ResponseWriter, r *http.Request) {
+	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
+	if !ok || userCtx == nil {
+		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID := r.PathValue("userId")
+	if userID == "" {
+		utils.SendError(w, "Missing userId parameter", http.StatusBadRequest)
+		return
+	}
+
+	cursor, limit, ok := utils.ParseCursorLimit(w, r)
+	if !ok {
+		return
+	}
+
+	followers, err := services.GetUserFollowers(userCtx.ID, userID, cursor, limit)
+	if err != nil {
+		utils.SendError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.SendSuccess(w, followers, "Followers retrieved successfully")
+}

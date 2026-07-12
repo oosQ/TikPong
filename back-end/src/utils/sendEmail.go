@@ -18,7 +18,7 @@ var emailData = EmailData{
 }
 
 func SendPasswordResetEmail(email string, token string) error {
-	resetLink := fmt.Sprintf("http://localhost:8433/api/auth/reset-password?token=%s", token)
+	resetLink := fmt.Sprintf("http://localhost:3000/auth/reset-password?token=%s", token)
 	return SendEmail(email, token, resetLink, "reset")
 }
 

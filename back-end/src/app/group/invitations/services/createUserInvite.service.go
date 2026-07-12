@@ -5,6 +5,7 @@ import (
 	"social-network/src/app/group/invitations/repo"
 	"social-network/src/app/group/shared"
 	notificationservices "social-network/src/app/notification/services"
+	userrepo "social-network/src/app/user/core/repo"
 )
 
 func InviteUser(groupID, inviterID, inviteeID string) error {
@@ -43,9 +44,13 @@ func InviteUser(groupID, inviterID, inviteeID string) error {
 		return err
 	}
 
-	_ = notificationservices.CreateAndDispatch(inviteeID, "group_invitation", "Group invitation", "You received a group invitation", map[string]any{
-		"group_id":   groupID,
-		"inviter_id": inviterID,
+	inviterName := userrepo.GetUserDisplayName(inviterID)
+	groupTitle := shared.GetGroupTitle(groupID)
+	_ = notificationservices.CreateAndDispatch(inviteeID, "group_invitation", "Group invitation", inviterName+" invited you to "+groupTitle, map[string]any{
+		"group_id":     groupID,
+		"group_title":  groupTitle,
+		"inviter_id":   inviterID,
+		"inviter_name": inviterName,
 	})
 	return nil
 }

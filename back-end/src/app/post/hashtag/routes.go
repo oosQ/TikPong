@@ -17,7 +17,7 @@ func Init() {
 		}
 	})
 
-	http.HandleFunc("/api/hashtags/{hashtagId}/posts", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/hashtags/{hashtagName}/posts", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			handlers.GetPostsByHashtagHandler(w, r)
 		} else {

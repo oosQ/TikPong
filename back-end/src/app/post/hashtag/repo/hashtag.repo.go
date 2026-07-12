@@ -3,6 +3,7 @@ package repo
 import (
 	"social-network/src/app/post/hashtag/dto"
 	database "social-network/src/db"
+	"strings"
 )
 
 func GetAllHashtags(cursor string, limit int) (*dto.GetAllHashtagsResponse, error) {
@@ -48,13 +49,13 @@ func GetAllHashtags(cursor string, limit int) (*dto.GetAllHashtagsResponse, erro
 	return result, nil
 }
 
-func HashtagExists(hashtagID string) (bool, error) {
+func HashtagExistsByName(hashtagName string) (bool, error) {
 	var count int
 	err := database.DB.QueryRow(`
 		SELECT COUNT(*)
 		FROM hashtags
-		WHERE id = ?
-	`, hashtagID).Scan(&count)
+		WHERE LOWER(name) = LOWER(?)
+	`, hashtagName).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -62,12 +63,35 @@ func HashtagExists(hashtagID string) (bool, error) {
 	return count > 0, nil
 }
 
-func GetPostsByHashtagID(hashtagID, currentUserID, cursor string, limit int) (*dto.GetPostsByHashtagResponse, error) {
+func GetPostsByHashtagName(hashtagName, currentUserID, cursor string, limit int) (*dto.GetPostsByHashtagResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT p.id, p.title, p.content, p.user_id, p.privacy, p.image_path, p.created_at
+		SELECT p.id, p.title, p.content, p.user_id, COALESCE(u.nickname, ''), COALESCE(u.avatar_path, ''),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM likes_post lp WHERE lp.user_id = ? AND lp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM reposts_post rp WHERE rp.user_id = ? AND rp.post_id = p.id
+		       ) THEN 1 ELSE 0 END,
+		       p.privacy, COALESCE(p.image_path, ''),
+		       COALESCE((
+			       SELECT GROUP_CONCAT(h2.name, '|||')
+			       FROM post_hashtags ph2
+			       JOIN hashtags h2 ON h2.id = ph2.hashtag_id
+			       WHERE ph2.post_id = p.id
+			       ORDER BY h2.name ASC
+		       ), ''),
+		       COALESCE(ps.total_likes, 0), COALESCE(ps.total_views, 0), COALESCE(ps.total_comments, 0),
+		       COALESCE((SELECT COUNT(*) FROM reposts_post rp WHERE rp.post_id = p.id), 0),
+		       p.is_edited, p.created_at
 		FROM posts p
 		JOIN post_hashtags ph ON ph.post_id = p.id
-		WHERE ph.hashtag_id = ?
+		JOIN hashtags h ON h.id = ph.hashtag_id
+		LEFT JOIN users u ON u.id = p.user_id
+		LEFT JOIN posts_summary ps ON ps.post_id = p.id
+		WHERE LOWER(h.name) = LOWER(?)
 		AND NOT EXISTS (
 			SELECT 1 FROM user_blocks ub
 			WHERE (ub.blocker_id = ? AND ub.blocked_id = p.user_id)
@@ -90,7 +114,7 @@ func GetPostsByHashtagID(hashtagID, currentUserID, cursor string, limit int) (*d
 		)
 		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT ?
-	`, hashtagID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
+	`, currentUserID, currentUserID, currentUserID, hashtagName, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -99,9 +123,34 @@ func GetPostsByHashtagID(hashtagID, currentUserID, cursor string, limit int) (*d
 	posts := make([]dto.PostSummaryResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.PostSummaryResponse
-		if err := rows.Scan(&item.ID, &item.Title, &item.Content, &item.UserID, &item.Privacy, &item.ImagePath, &item.CreatedAt); err != nil {
+		var hashtags string
+		var isEdited int
+		if err := rows.Scan(
+			&item.ID,
+			&item.Title,
+			&item.Content,
+			&item.UserID,
+			&item.Nickname,
+			&item.AvatarPath,
+			&item.IsFollowing,
+			&item.IsLiked,
+			&item.IsReposted,
+			&item.Privacy,
+			&item.ImagePath,
+			&hashtags,
+			&item.TotalLikes,
+			&item.TotalViews,
+			&item.TotalComments,
+			&item.TotalReposts,
+			&isEdited,
+			&item.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
+		if hashtags != "" {
+			item.Hashtags = strings.Split(hashtags, "|||")
+		}
+		item.IsEdited = isEdited == 1
 		posts = append(posts, item)
 	}
 

@@ -10,7 +10,11 @@ import (
 )
 
 func SaveUploadedImage(r *http.Request) (string, error) {
-	return saveUploadedImage(r, "avatar_path", "./uploads/avatars", "./uploads/avatars/f98e9819-7dc8-4445-b4fb-c9eaf9238416_download.jpg")
+	return saveUploadedImage(r, "avatar_path", "./uploads/avatars", "")
+}
+
+func SaveUploadedGroupAvatar(r *http.Request) (string, error) {
+	return saveUploadedImage(r, "avatar", "./uploads/avatars", "")
 }
 
 func SaveUploadedPostImage(r *http.Request) (string, error) {
@@ -19,6 +23,10 @@ func SaveUploadedPostImage(r *http.Request) (string, error) {
 
 func SaveUploadedCommentImage(r *http.Request) (string, error) {
 	return saveUploadedImage(r, "image_path", "./uploads/comments", "")
+}
+
+func SaveUploadedPrivateMessageImage(r *http.Request) (string, error) {
+	return saveUploadedImage(r, "image_path", "./uploads/messages", "")
 }
 
 func saveUploadedImage(r *http.Request, fieldName, uploadDir, defaultImagePath string) (string, error) {

@@ -23,6 +23,11 @@ type EditPostRequest struct {
 type PostSummaryResponse struct {
 	ID            string    `json:"id"`
 	UserID        string    `json:"user_id"`
+	Nickname      string    `json:"nickname"`
+	AvatarPath    string    `json:"avatar_path"`
+	IsFollowing   int       `json:"is_following"`
+	IsLiked       int       `json:"is_liked"`
+	IsReposted    int       `json:"is_reposted"`
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
 	Privacy       string    `json:"privacy"`
@@ -31,6 +36,7 @@ type PostSummaryResponse struct {
 	TotalLikes    int       `json:"total_likes"`
 	TotalViews    int       `json:"total_views"`
 	TotalComments int       `json:"total_comments"`
+	TotalReposts  int       `json:"total_reposts"`
 	IsEdited      bool      `json:"is_edited"`
 	CreatedAt     time.Time `json:"created_at"`
 }
@@ -50,6 +56,10 @@ type SearchPostsResponse struct {
 type PostDetailResponse struct {
 	ID             string    `json:"id"`
 	UserID         string    `json:"user_id"`
+	Nickname       string    `json:"nickname"`
+	AvatarPath     string    `json:"avatar_path"`
+	IsLiked        int       `json:"is_liked"`
+	IsReposted     int       `json:"is_reposted"`
 	Title          string    `json:"title"`
 	Content        string    `json:"content"`
 	Privacy        string    `json:"privacy"`
@@ -57,6 +67,7 @@ type PostDetailResponse struct {
 	TotalLikes     int       `json:"total_likes"`
 	TotalViews     int       `json:"total_views"`
 	TotalComments  int       `json:"total_comments"`
+	TotalReposts   int       `json:"total_reposts"`
 	IsEdited       bool      `json:"is_edited"`
 	CreatedAt      time.Time `json:"created_at"`
 	Hashtags       []string  `json:"hashtags"`

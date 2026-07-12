@@ -24,10 +24,46 @@ func Init() {
 		}
 	}))
 
+	http.HandleFunc("/api/posts/explore", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetExplorePostsHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
 	http.HandleFunc("/api/posts/search", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			handlers.SearchPostsHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
+	http.HandleFunc("/api/users/{userId}/posts", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetUserPostsHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
+	http.HandleFunc("/api/users/{userId}/reposts", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetUserRepostedPostsHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
+	http.HandleFunc("/api/users/me/liked-posts", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetCurrentUserLikedPostsHandler(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -46,4 +82,3 @@ func Init() {
 		}
 	})
 }
-

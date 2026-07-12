@@ -30,7 +30,10 @@ Session auth uses cookie: `session_id`.
 |---|---|---|---|
 | `POST` | `/api/post` | Required (`session_id`) | `CreatePostRequest` (`multipart/form-data`) |
 | `GET` | `/api/posts` | Optional auth | Query params (`cursor`, `limit`) |
+| `GET` | `/api/posts/explore` | Required (`session_id`) | Query params (`cursor`, `limit`) |
 | `GET` | `/api/posts/search` | Optional auth | Query params (`q`, `cursor`, `limit`) |
+| `GET` | `/api/users/{userId}/posts` | Optional auth | Path param (`userId`) + query params (`cursor`, `limit`) |
+| `GET` | `/api/users/me/liked-posts` | Required (`session_id`) | Query params (`cursor`, `limit`) |
 | `GET` | `/api/posts/{postId}` | Optional auth | Path param (`postId`) |
 | `PATCH` | `/api/posts/{postId}` | Required (`session_id`) | `EditPostRequest` (`multipart/form-data`) |
 | `DELETE` | `/api/posts/{postId}` | Required (`session_id`) | Path param (`postId`) |
@@ -236,6 +239,61 @@ Example success response:
   - `cursor` (optional): pagination cursor (post id)
   - `limit` (optional): integer between `1` and `100`, default `20`
 
+### 4) Explore Posts
+
+- Method: `GET`
+- Endpoint: `/api/posts/explore`
+- Auth: Required
+- Query params:
+  - `cursor` (optional): pagination cursor (post id)
+  - `limit` (optional): integer between `1` and `100`, default `20`
+
+Behavior:
+- returns only `public` posts
+- excludes posts created by the current user
+- excludes posts created by users the current user already follows
+- excludes blocked users in either direction
+
+Example request:
+
+```bash
+curl "http://localhost:8433/api/posts/explore?limit=20" \
+	--cookie "session_id=<your_session_id>"
+```
+
+Example success response:
+
+```json
+{
+	"success": true,
+	"data": {
+		"posts": [
+			{
+				"id": "p-001",
+				"user_id": "u-010",
+				"nickname": "new_creator",
+				"avatar_path": "",
+				"is_following": 0,
+				"is_liked": 0,
+				"title": "Discover this post",
+				"content": "Public post from a user you do not follow",
+				"privacy": "public",
+				"image_path": "",
+				"hashtags": ["discover"],
+				"total_likes": 1,
+				"total_views": 5,
+				"total_comments": 0,
+				"is_edited": false,
+				"created_at": "2026-04-02T10:00:00Z"
+			}
+		],
+		"next_cursor": "",
+		"limit": 20
+	},
+	"message": "Explore posts retrieved successfully"
+}
+```
+
 Example request:
 
 ```bash
@@ -266,7 +324,118 @@ Common error response:
 }
 ```
 
-### 4) Get Post By ID
+### 4) Get Current User Liked Posts
+
+- Method: `GET`
+- Endpoint: `/api/users/me/liked-posts`
+- Auth: Required
+- Query params:
+  - `cursor` (optional): pagination cursor (liked post id)
+  - `limit` (optional): integer between `1` and `100`, default `20`
+
+Posts are ordered by newest like first.
+
+Example request:
+
+```bash
+curl "http://localhost:8433/api/users/me/liked-posts?limit=20" \
+	--cookie "session_id=<your_session_id>"
+```
+
+Example success response:
+
+```json
+{
+	"success": true,
+	"data": {
+		"posts": [
+			{
+				"id": "p-001",
+				"user_id": "u-001",
+				"nickname": "john",
+				"avatar_path": "./uploads/avatars/avatar.png",
+				"is_following": 0,
+				"is_liked": 1,
+				"title": "Post title",
+				"content": "Post content",
+				"privacy": "public",
+				"image_path": "",
+				"hashtags": ["go", "backend"],
+				"total_likes": 0,
+				"total_views": 0,
+				"total_comments": 0,
+				"is_edited": false,
+				"created_at": "2026-04-02T10:00:00Z"
+			}
+		],
+		"next_cursor": "",
+		"limit": 20
+	},
+	"message": "Current user liked posts retrieved successfully"
+}
+```
+
+Common error response:
+
+```json
+{
+	"success": false,
+	"error": "Unauthorized",
+	"code": 401
+}
+```
+
+### 5) Get Posts By User
+
+- Method: `GET`
+- Endpoint: `/api/users/{userId}/posts`
+- Auth: Optional
+- Path param:
+  - `userId`: target user id
+- Query params:
+  - `cursor` (optional): pagination cursor (post id)
+  - `limit` (optional): integer between `1` and `100`, default `20`
+
+Example request:
+
+```bash
+curl "http://localhost:8433/api/users/7b351f19-5fa2-4f9d-90c2-11f126f1f321/posts?limit=20"
+```
+
+Example success response:
+
+```json
+{
+	"success": true,
+	"data": {
+		"posts": [
+			{
+				"id": "p-001",
+				"user_id": "7b351f19-5fa2-4f9d-90c2-11f126f1f321",
+				"nickname": "johnny",
+				"avatar_path": "./uploads/avatars/johnny.jpg",
+				"is_following": 1,
+				"is_liked": 0,
+				"title": "Post title",
+				"content": "Post content",
+				"privacy": "public",
+				"image_path": "",
+				"hashtags": ["go", "backend"],
+				"total_likes": 0,
+				"total_views": 0,
+				"total_comments": 0,
+				"is_edited": false,
+				"created_at": "2026-04-02T10:00:00Z"
+			}
+		],
+		"next_cursor": "",
+		"limit": 20
+	},
+	"message": "User posts retrieved successfully"
+}
+```
+
+### 5) Get Post By ID
 
 - Method: `GET`
 - Endpoint: `/api/posts/{postId}`
@@ -321,7 +490,7 @@ Common error responses:
 }
 ```
 
-### 5) Edit Post
+### 6) Edit Post
 
 - Method: `PATCH`
 - Endpoint: `/api/posts/{postId}`
@@ -370,7 +539,7 @@ Common error responses:
 }
 ```
 
-### 6) Delete Post
+### 7) Delete Post
 
 - Method: `DELETE`
 - Endpoint: `/api/posts/{postId}`

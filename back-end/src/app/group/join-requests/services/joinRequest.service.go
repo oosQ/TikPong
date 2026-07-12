@@ -5,6 +5,7 @@ import (
 	"social-network/src/app/group/join-requests/repo"
 	"social-network/src/app/group/shared"
 	notificationservices "social-network/src/app/notification/services"
+	userrepo "social-network/src/app/user/core/repo"
 )
 
 func RequestToJoin(groupID, userID string) error {
@@ -38,9 +39,13 @@ func RequestToJoin(groupID, userID string) error {
 
 	creatorID, err := shared.GetCreatorID(groupID)
 	if err == nil && creatorID != "" {
-		_ = notificationservices.CreateAndDispatch(creatorID, "group_join_request", "Group join request", "A user requested to join your group", map[string]any{
-			"group_id":     groupID,
-			"requester_id": userID,
+		requesterName := userrepo.GetUserDisplayName(userID)
+		groupTitle := shared.GetGroupTitle(groupID)
+		_ = notificationservices.CreateAndDispatch(creatorID, "group_join_request", "Group join request", requesterName+" wants to join "+groupTitle, map[string]any{
+			"group_id":       groupID,
+			"group_title":    groupTitle,
+			"requester_id":   userID,
+			"requester_name": requesterName,
 		})
 	}
 	return nil

@@ -1,8 +1,8 @@
 package shared
 
 import (
-	database "social-network/src/db"
 	"database/sql"
+	database "social-network/src/db"
 )
 
 func IsMember(groupID, userID string) (bool, error) {
@@ -41,6 +41,15 @@ func GetCreatorID(groupID string) (string, error) {
 		return "", err
 	}
 	return creatorID, nil
+}
+
+func GetGroupTitle(groupID string) string {
+	var title string
+	err := database.DB.QueryRow(`SELECT title FROM groups WHERE id = ?`, groupID).Scan(&title)
+	if err != nil {
+		return ""
+	}
+	return title
 }
 
 func DeleteGroup(groupID string) error {

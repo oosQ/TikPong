@@ -41,22 +41,31 @@ func CheckBlockedEitherWay(userA, userB string) (bool, error) {
 	return count > 0, nil
 }
 
-func SavePrivateMessage(id, senderID, recipientID, content string) error {
+func SavePrivateMessage(id, senderID, recipientID, content, imagePath string) error {
 	_, err := database.DB.Exec(`
-		INSERT INTO private_messages (id, sender_id, recipient_id, content, created_at)
-		VALUES (?, ?, ?, ?, ?)
-	`, id, senderID, recipientID, content, time.Now())
+		INSERT INTO private_messages (id, sender_id, recipient_id, content, image_path, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, id, senderID, recipientID, content, imagePath, time.Now())
+	return err
+}
+
+func MarkPrivateMessagesRead(currentUserID, otherUserID string) error {
+	_, err := database.DB.Exec(`
+		UPDATE private_messages
+		SET read_at = ?
+		WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL
+	`, time.Now(), otherUserID, currentUserID)
 	return err
 }
 
 func GetPrivateMessages(userA, userB, cursor string, limit int) (*dto.GetPrivateMessagesResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT id, sender_id, recipient_id, content, created_at
+		SELECT id, sender_id, recipient_id, content, COALESCE(image_path, ''), created_at
 		FROM private_messages
-		WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
+		WHERE ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
 		AND (
 			? = ''
-			OR created_at > (
+			OR created_at < (
 				SELECT created_at FROM private_messages
 				WHERE id = ? AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
 			)
@@ -65,10 +74,10 @@ func GetPrivateMessages(userA, userB, cursor string, limit int) (*dto.GetPrivate
 					SELECT created_at FROM private_messages
 					WHERE id = ? AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
 				)
-				AND id > ?
+				AND id < ?
 			)
 		)
-		ORDER BY created_at ASC, id ASC
+		ORDER BY created_at DESC, id DESC
 		LIMIT ?
 	`, userA, userB, userB, userA, cursor, cursor, userA, userB, userB, userA, cursor, userA, userB, userB, userA, cursor, limit+1)
 	if err != nil {
@@ -79,7 +88,7 @@ func GetPrivateMessages(userA, userB, cursor string, limit int) (*dto.GetPrivate
 	items := make([]dto.PrivateMessageResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.PrivateMessageResponse
-		if err := rows.Scan(&item.ID, &item.SenderID, &item.RecipientID, &item.Content, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.SenderID, &item.RecipientID, &item.Content, &item.ImagePath, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -99,20 +108,24 @@ func GetPrivateMessages(userA, userB, cursor string, limit int) (*dto.GetPrivate
 		result.NextCursor = result.Messages[len(result.Messages)-1].ID
 	}
 
+	for left, right := 0, len(result.Messages)-1; left < right; left, right = left+1, right-1 {
+		result.Messages[left], result.Messages[right] = result.Messages[right], result.Messages[left]
+	}
+
 	return result, nil
 }
 
-func SaveGroupMessage(id, groupID, senderID, content string) error {
+func SaveGroupMessage(id, groupID, senderID, content, imagePath string) error {
 	_, err := database.DB.Exec(`
-		INSERT INTO group_messages (id, group_id, sender_id, content, created_at)
-		VALUES (?, ?, ?, ?, ?)
-	`, id, groupID, senderID, content, time.Now())
+		INSERT INTO group_messages (id, group_id, sender_id, content, image_path, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, id, groupID, senderID, content, imagePath, time.Now())
 	return err
 }
 
 func GetGroupMessages(groupID, cursor string, limit int) (*dto.GetGroupMessagesResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT gm.id, gm.group_id, gm.sender_id, u.nickname, COALESCE(u.avatar_path, ''), gm.content, gm.created_at
+		SELECT gm.id, gm.group_id, gm.sender_id, u.nickname, COALESCE(u.avatar_path, ''), gm.content, COALESCE(gm.image_path, ''), gm.created_at
 		FROM group_messages gm
 		JOIN users u ON u.id = gm.sender_id
 		WHERE gm.group_id = ?
@@ -132,7 +145,7 @@ func GetGroupMessages(groupID, cursor string, limit int) (*dto.GetGroupMessagesR
 	items := make([]dto.GroupMessageResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.GroupMessageResponse
-		if err := rows.Scan(&item.ID, &item.GroupID, &item.SenderID, &item.Nickname, &item.AvatarPath, &item.Content, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.GroupID, &item.SenderID, &item.Nickname, &item.AvatarPath, &item.Content, &item.ImagePath, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -164,6 +177,7 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 				pm.sender_id,
 				pm.recipient_id,
 				pm.content,
+				COALESCE(pm.image_path, '') AS image_path,
 				pm.created_at,
 				CASE WHEN pm.sender_id < pm.recipient_id THEN pm.sender_id ELSE pm.recipient_id END AS user_a,
 				CASE WHEN pm.sender_id < pm.recipient_id THEN pm.recipient_id ELSE pm.sender_id END AS user_b
@@ -180,9 +194,20 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 			u.first_name,
 			u.last_name,
 			COALESCE(u.avatar_path, ''),
-			um.content,
+			CASE
+				WHEN COALESCE(um.content, '') <> '' THEN um.content
+				WHEN COALESCE(um.image_path, '') <> '' THEN '[Image]'
+				ELSE ''
+			END,
 			um.created_at,
-			um.sender_id
+			um.sender_id,
+			(
+				SELECT COUNT(*)
+				FROM private_messages unread
+				WHERE unread.sender_id = u.id
+				  AND unread.recipient_id = ?
+				  AND unread.read_at IS NULL
+			) AS unread_count
 		FROM user_messages um
 		JOIN latest_pair lp
 			ON lp.user_a = um.user_a
@@ -196,7 +221,7 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 			   OR (ub.blocker_id = u.id AND ub.blocked_id = ?)
 		)
 		ORDER BY um.created_at DESC, um.row_num DESC
-	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +239,7 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 			&item.LastMessage,
 			&item.LastMessageAt,
 			&item.LastSenderID,
+			&item.UnreadCount,
 		); err != nil {
 			return nil, err
 		}
@@ -264,9 +290,20 @@ func GetPrivateConversationSummary(currentUserID, otherUserID string) (*dto.Priv
 			u.first_name,
 			u.last_name,
 			COALESCE(u.avatar_path, ''),
-			pm.content,
+			CASE
+				WHEN COALESCE(pm.content, '') <> '' THEN pm.content
+				WHEN COALESCE(pm.image_path, '') <> '' THEN '[Image]'
+				ELSE ''
+			END,
 			pm.created_at,
-			pm.sender_id
+			pm.sender_id,
+			(
+				SELECT COUNT(*)
+				FROM private_messages unread
+				WHERE unread.sender_id = u.id
+				  AND unread.recipient_id = ?
+				  AND unread.read_at IS NULL
+			) AS unread_count
 		FROM private_messages pm
 		JOIN users u
 			ON u.id = CASE WHEN pm.sender_id = ? THEN pm.recipient_id ELSE pm.sender_id END
@@ -280,7 +317,7 @@ func GetPrivateConversationSummary(currentUserID, otherUserID string) (*dto.Priv
 		)
 		ORDER BY pm.created_at DESC, pm.rowid DESC
 		LIMIT 1
-	`, currentUserID, currentUserID, otherUserID, otherUserID, currentUserID, currentUserID, otherUserID, otherUserID, currentUserID)
+	`, currentUserID, currentUserID, currentUserID, otherUserID, otherUserID, currentUserID, currentUserID, otherUserID, otherUserID, currentUserID)
 
 	var item dto.PrivateConversationResponse
 	if err := row.Scan(
@@ -292,6 +329,7 @@ func GetPrivateConversationSummary(currentUserID, otherUserID string) (*dto.Priv
 		&item.LastMessage,
 		&item.LastMessageAt,
 		&item.LastSenderID,
+		&item.UnreadCount,
 	); err != nil {
 		return nil, err
 	}

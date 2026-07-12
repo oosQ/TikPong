@@ -14,13 +14,24 @@ type GetAllHashtagsResponse struct {
 }
 
 type PostSummaryResponse struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	UserID    string    `json:"user_id"`
-	Privacy   string    `json:"privacy"`
-	ImagePath string    `json:"image_path"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	Title         string    `json:"title"`
+	Content       string    `json:"content"`
+	UserID        string    `json:"user_id"`
+	Nickname      string    `json:"nickname"`
+	AvatarPath    string    `json:"avatar_path"`
+	IsFollowing   int       `json:"is_following"`
+	IsLiked       int       `json:"is_liked"`
+	IsReposted    int       `json:"is_reposted"`
+	Privacy       string    `json:"privacy"`
+	ImagePath     string    `json:"image_path"`
+	Hashtags      []string  `json:"hashtags,omitempty"`
+	TotalLikes    int       `json:"total_likes"`
+	TotalViews    int       `json:"total_views"`
+	TotalComments int       `json:"total_comments"`
+	TotalReposts  int       `json:"total_reposts"`
+	IsEdited      bool      `json:"is_edited"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type GetPostsByHashtagResponse struct {

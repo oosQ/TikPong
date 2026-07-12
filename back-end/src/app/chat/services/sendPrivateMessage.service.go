@@ -4,12 +4,13 @@ import (
 	"errors"
 	"social-network/src/app/chat/repo"
 	notificationservices "social-network/src/app/notification/services"
+	userrepo "social-network/src/app/user/core/repo"
 	"social-network/src/utils"
 	"social-network/src/ws"
 	"strings"
 )
 
-func SendPrivateMessage(senderID, recipientID, content string) (string, error) {
+func SendPrivateMessage(senderID, recipientID, content, imagePath string) (string, error) {
 	if senderID == recipientID {
 		return "", errors.New("cannot message yourself")
 	}
@@ -23,8 +24,9 @@ func SendPrivateMessage(senderID, recipientID, content string) (string, error) {
 	}
 
 	content = strings.TrimSpace(content)
-	if content == "" {
-		return "", errors.New("content is required")
+	imagePath = strings.TrimSpace(imagePath)
+	if content == "" && imagePath == "" {
+		return "", errors.New("content or image is required")
 	}
 
 	followsA, err := repo.IsFollowing(senderID, recipientID)
@@ -45,7 +47,7 @@ func SendPrivateMessage(senderID, recipientID, content string) (string, error) {
 		return "", errors.New("failed to generate message id")
 	}
 
-	if err := repo.SavePrivateMessage(messageID, senderID, recipientID, content); err != nil {
+	if err := repo.SavePrivateMessage(messageID, senderID, recipientID, content, imagePath); err != nil {
 		return "", err
 	}
 
@@ -63,6 +65,7 @@ func SendPrivateMessage(senderID, recipientID, content string) (string, error) {
 		"sender_id":    senderID,
 		"recipient_id": recipientID,
 		"content":      content,
+		"image_path":   imagePath,
 	}
 
 	if recipientFollowsSender || recipientPublic {
@@ -77,9 +80,12 @@ func SendPrivateMessage(senderID, recipientID, content string) (string, error) {
 		ws.GlobalHub().SendToUser(senderID, "chat:private:conversation-updated", senderConversation)
 	}
 
-	_ = notificationservices.CreateAndDispatch(recipientID, "private_message", "New private message", "You received a private message", map[string]any{
-		"sender_id":  senderID,
-		"message_id": messageID,
+	senderName := userrepo.GetUserDisplayName(senderID)
+	_ = notificationservices.CreateAndDispatch(recipientID, "private_message", "New private message", senderName+" sent you a message", map[string]any{
+		"sender_id":   senderID,
+		"sender_name": senderName,
+		"message_id":  messageID,
+		"preview":     content,
 	})
 
 	return messageID, nil

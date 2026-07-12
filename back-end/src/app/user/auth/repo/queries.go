@@ -32,7 +32,7 @@ email,
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?)`
 
 	CheckEmailExistsQuery     = `SELECT COUNT(*) FROM users WHERE email = ?`
-	CheckNicknameExistsQuery  = `SELECT COUNT(*) FROM users WHERE nickname = ?`
+	CheckNicknameExistsQuery  = `SELECT COUNT(*) FROM users WHERE LOWER(TRIM(COALESCE(nickname, ''))) = LOWER(TRIM(?))`
 	UpdatePasswordQuery       = `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
 	CheckCurrentPasswordQuery = `SELECT COUNT(*) FROM users WHERE id = ? AND password_hash = ?`
 )

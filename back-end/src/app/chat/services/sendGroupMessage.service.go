@@ -9,10 +9,10 @@ import (
 	"strings"
 )
 
-func SendGroupMessage(groupID, senderID, content string) (string, error) {
+func SendGroupMessage(groupID, senderID, content, imagePath string) (string, error) {
 	content = strings.TrimSpace(content)
-	if content == "" {
-		return "", errors.New("content is required")
+	if content == "" && imagePath == "" {
+		return "", errors.New("content or image is required")
 	}
 
 	isMember, err := shared.IsMember(groupID, senderID)
@@ -28,17 +28,18 @@ func SendGroupMessage(groupID, senderID, content string) (string, error) {
 		return "", errors.New("failed to generate message id")
 	}
 
-	if err := repo.SaveGroupMessage(messageID, groupID, senderID, content); err != nil {
+	if err := repo.SaveGroupMessage(messageID, groupID, senderID, content, imagePath); err != nil {
 		return "", err
 	}
 
 	memberIDs, err := shared.GetGroupMemberIDs(groupID)
 	if err == nil {
 		ws.GlobalHub().SendToUsers(memberIDs, "chat:group:new", map[string]any{
-			"id":        messageID,
-			"group_id":  groupID,
-			"sender_id": senderID,
-			"content":   content,
+			"id":         messageID,
+			"group_id":   groupID,
+			"sender_id":  senderID,
+			"content":    content,
+			"image_path": imagePath,
 		})
 
 		if groupConversation, convErr := repo.GetGroupConversationSummary(groupID); convErr == nil {

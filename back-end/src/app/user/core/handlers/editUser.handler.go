@@ -23,7 +23,11 @@ func EditUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := services.EditUser(userCtx.ID, req); err != nil {
-		utils.SendError(w, err.Error(), http.StatusBadRequest)
+		statusCode := http.StatusBadRequest
+		if err.Error() == "nickname already exists" {
+			statusCode = http.StatusConflict
+		}
+		utils.SendError(w, err.Error(), statusCode)
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	database "social-network/src/db"
 	"social-network/src/models"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,16 @@ func RegisterUser(user models.User) (err error) {
 	}
 	if exists {
 		return errors.New("email already exists")
+	}
+
+	if strings.TrimSpace(user.Nickname) != "" {
+		exists, err = CheckNicknameExists(user.Nickname)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return errors.New("nickname already exists")
+		}
 	}
 
 	tx, err := database.DB.Begin()
@@ -55,6 +66,17 @@ func CheckEmailExists(email string) (bool, error) {
 	return count > 0, nil
 }
 
+func CheckNicknameExists(nickname string) (bool, error) {
+	var count int
+
+	err := database.DB.QueryRow(CheckNicknameExistsQuery, strings.TrimSpace(nickname)).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func CheckUserCredentials(nicknameOrEmail string) (*models.User, error) {
 	var user models.User
 
@@ -70,7 +92,6 @@ func CreateSession(session models.Session) error {
 	_, err := database.DB.Exec(CreateSessionQuery, session.ID, session.UserID, session.Role, session.Email, session.AvatarPath, session.ExpiresAt)
 	return err
 }
-
 
 func DeleteSession(sessionID string) error {
 	_, err := database.DB.Exec(DeleteSessionQuery, sessionID)

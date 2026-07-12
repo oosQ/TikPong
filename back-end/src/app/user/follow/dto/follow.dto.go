@@ -18,12 +18,12 @@ type GetFollowRequestsResponse struct {
 }
 
 type FollowRequestResponse struct {
-	RequesterID string `json:"requester_id"`
-	TargetID    string `json:"target_id"`
-	Status      string `json:"status"`
+	RequesterID string    `json:"requester_id"`
+	TargetID    string    `json:"target_id"`
+	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
-	Nickname    string `json:"nickname"`
-	AvatarPath  string `json:"avatar_path"`
+	Nickname    string    `json:"nickname"`
+	AvatarPath  string    `json:"avatar_path"`
 }
 
 type GetSentFollowRequestsResponse struct {
@@ -35,6 +35,8 @@ type GetSentFollowRequestsResponse struct {
 type FollowInfoResponse struct {
 	UserID     string `json:"user_id"`
 	Nickname   string `json:"nickname"`
+	FirstName  string `json:"first_name"`
+	LastName   string `json:"last_name"`
 	AvatarPath string `json:"avatar_path"`
 }
 
@@ -43,4 +45,3 @@ type GetFollowInfoResponse struct {
 	NextCursor string               `json:"next_cursor,omitempty"`
 	Limit      int                  `json:"limit"`
 }
-

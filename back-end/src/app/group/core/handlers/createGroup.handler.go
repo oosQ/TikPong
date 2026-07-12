@@ -16,13 +16,13 @@ func CreateGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req dto.CreateGroupRequest
-	avatarPath, err := utils.SaveUploadedImage(r)
+	avatarPath, err := utils.SaveUploadedGroupAvatar(r)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	req.GroupAvatar = avatarPath
-    req.Description = r.FormValue("description")
+	req.Description = r.FormValue("description")
 	req.Title = r.FormValue("title")
 
 	groupID, err := services.CreateGroup(userCtx.ID, req)

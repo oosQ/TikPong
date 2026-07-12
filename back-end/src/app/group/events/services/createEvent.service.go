@@ -2,13 +2,13 @@ package services
 
 import (
 	"errors"
-	"strings"
 	"social-network/src/app/group/events/dto"
 	"social-network/src/app/group/events/repo"
+	"social-network/src/app/group/shared"
 	notificationservices "social-network/src/app/notification/services"
 	"social-network/src/utils"
+	"strings"
 	"time"
-	"social-network/src/app/group/shared"
 )
 
 func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string, error) {
@@ -40,17 +40,19 @@ func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string,
 
 	memberIDs, err := shared.GetGroupMemberIDs(groupID)
 	if err == nil {
+		groupTitle := shared.GetGroupTitle(groupID)
 		for _, memberID := range memberIDs {
 			if memberID == creatorID {
 				continue
 			}
-			_ = notificationservices.CreateAndDispatch(memberID, "group_event", "New group event", "A new group event was created", map[string]any{
-				"group_id": groupID,
-				"event_id": eventID,
+			_ = notificationservices.CreateAndDispatch(memberID, "group_event", "New group event", "New event in "+groupTitle+": "+strings.TrimSpace(req.Title), map[string]any{
+				"group_id":    groupID,
+				"group_title": groupTitle,
+				"event_id":    eventID,
+				"event_title": strings.TrimSpace(req.Title),
 			})
 		}
 	}
 
 	return eventID, nil
 }
-

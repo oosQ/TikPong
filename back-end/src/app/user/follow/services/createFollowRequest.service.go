@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	notificationservices "social-network/src/app/notification/services"
+	userrepo "social-network/src/app/user/core/repo"
 	"social-network/src/app/user/follow/repo"
 )
 
@@ -46,7 +47,7 @@ func CreateFollowRequest(currentUserID, targetID string) error {
 	if requestExists {
 		return errors.New("follow request already exists")
 	}
-    
+
 	rejectRequestExists, err := repo.CheckRejectFollowRequestExists(targetID, currentUserID)
 	if err != nil {
 		return err
@@ -56,8 +57,10 @@ func CreateFollowRequest(currentUserID, targetID string) error {
 		if err != nil {
 			return err
 		}
-		_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", "You received a follow request", map[string]any{
-			"from_user_id": currentUserID,
+		requesterName := userrepo.GetUserDisplayName(currentUserID)
+		_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", requesterName+" wants to follow you", map[string]any{
+			"from_user_id":   currentUserID,
+			"from_user_name": requesterName,
 		})
 		return nil
 	}
@@ -66,8 +69,10 @@ func CreateFollowRequest(currentUserID, targetID string) error {
 		return err
 	}
 
-	_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", "You received a follow request", map[string]any{
-		"from_user_id": currentUserID,
+	requesterName := userrepo.GetUserDisplayName(currentUserID)
+	_ = notificationservices.CreateAndDispatch(targetID, "follow_request", "New follow request", requesterName+" wants to follow you", map[string]any{
+		"from_user_id":   currentUserID,
+		"from_user_name": requesterName,
 	})
 	return nil
 }

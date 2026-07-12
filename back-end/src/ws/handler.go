@@ -2,12 +2,25 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
+	chatrepo "social-network/src/app/chat/repo"
 	"social-network/src/middleware"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+type inboundEnvelope struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+type privateTypingEvent struct {
+	RecipientID string `json:"recipient_id"`
+	IsTyping    bool   `json:"is_typing"`
+}
 
 const (
 	writeWait      = 10 * time.Second
@@ -55,11 +68,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	go readLoop(ctx, cancel, conn)
+	go readLoop(ctx, cancel, conn, user.ID)
 	writeLoop(ctx, conn, client)
 }
 
-func readLoop(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn) {
+func readLoop(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn, userID string) {
 	defer cancel()
 
 	conn.SetReadLimit(maxMessageSize)
@@ -73,11 +86,81 @@ func readLoop(ctx context.Context, cancel context.CancelFunc, conn *websocket.Co
 		case <-ctx.Done():
 			return
 		default:
-			if _, _, err := conn.ReadMessage(); err != nil {
+			_, payload, err := conn.ReadMessage()
+			if err != nil {
 				return
 			}
+
+			_ = handleInboundMessage(userID, payload)
 		}
 	}
+}
+
+func handleInboundMessage(userID string, payload []byte) error {
+	var message inboundEnvelope
+	if err := json.Unmarshal(payload, &message); err != nil {
+		return err
+	}
+
+	switch message.Type {
+	case "chat:private:typing":
+		return handlePrivateTypingEvent(userID, message.Data)
+	default:
+		return errors.New("unsupported event type")
+	}
+}
+
+func handlePrivateTypingEvent(senderID string, payload json.RawMessage) error {
+	var event privateTypingEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return err
+	}
+
+	if event.RecipientID == "" || event.RecipientID == senderID {
+		return errors.New("invalid recipient")
+	}
+
+	blocked, err := chatrepo.CheckBlockedEitherWay(senderID, event.RecipientID)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errors.New("cannot message a blocked user")
+	}
+
+	followsA, err := chatrepo.IsFollowing(senderID, event.RecipientID)
+	if err != nil {
+		return err
+	}
+	followsB, err := chatrepo.IsFollowing(event.RecipientID, senderID)
+	if err != nil {
+		return err
+	}
+
+	if !followsA && !followsB {
+		return errors.New("you can only message users you follow or who follow you")
+	}
+
+	recipientFollowsSender, err := chatrepo.IsFollowing(event.RecipientID, senderID)
+	if err != nil {
+		return err
+	}
+	recipientPublic, err := chatrepo.IsUserPublic(event.RecipientID)
+	if err != nil {
+		return err
+	}
+
+	if !recipientFollowsSender && !recipientPublic {
+		return nil
+	}
+
+	GlobalHub().SendToUser(event.RecipientID, "chat:private:typing", map[string]any{
+		"sender_id":    senderID,
+		"recipient_id": event.RecipientID,
+		"is_typing":    event.IsTyping,
+	})
+
+	return nil
 }
 
 func writeLoop(ctx context.Context, conn *websocket.Conn, client <-chan []byte) {

@@ -22,8 +22,20 @@ func Init() {
 	}))
 
 	http.HandleFunc("/api/followers/{userId}", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodDelete {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetUserFollowersHandler(w, r)
+		case http.MethodDelete:
 			handlers.RemoveFollowerHandler(w, r)
+		default:
+			utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+	}))
+
+	http.HandleFunc("/api/following/{userId}", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			handlers.GetUserFollowingHandler(w, r)
 		} else {
 			utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return

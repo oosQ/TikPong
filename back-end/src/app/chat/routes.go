@@ -19,7 +19,16 @@ func Init() {
 			utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}))
-	
+
+	http.HandleFunc("/api/chat/private/{userId}/read", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			handlers.MarkPrivateMessagesReadHandler(w, r)
+		default:
+			utils.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+
 	http.HandleFunc("/api/chat/groups/inbox", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
