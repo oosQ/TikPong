@@ -3,24 +3,22 @@ package services
 import (
 	"errors"
 	"social-network/src/app/user/auth/dto"
-	"social-network/src/models"
 	"social-network/src/app/user/auth/repo"
+	"social-network/src/models"
 	"social-network/src/utils"
 	"time"
 )
 
 func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
-	 
 
 	user, err := repo.CheckUserCredentials(req.NicknameOrEmail)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, errors.New("invalid Nickname or Email")
 	}
-
 
 	isPasswordValid := utils.CheckPasswordHash(req.Password, user.PasswordHash)
 	if !isPasswordValid {
-		return "", "", time.Time{}, errors.New("invalid credentials")
+		return "", "", time.Time{}, errors.New("invalid password")
 	}
 
 	sessionID, err := utils.GenerateSessionID()
@@ -28,14 +26,14 @@ func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
 		return "", "", time.Time{}, err
 	}
 
-    sessionExpiration := utils.GetSessionExpiry()
-    session := models.Session{
-		ID: sessionID,
-		UserID: user.ID,
-		Role: user.Role,
-		Email: user.Email,
+	sessionExpiration := utils.GetSessionExpiry()
+	session := models.Session{
+		ID:         sessionID,
+		UserID:     user.ID,
+		Role:       user.Role,
+		Email:      user.Email,
 		AvatarPath: user.AvatarPath,
-		ExpiresAt: sessionExpiration,
+		ExpiresAt:  sessionExpiration,
 	}
 	err = repo.CreateSession(session)
 	if err != nil {

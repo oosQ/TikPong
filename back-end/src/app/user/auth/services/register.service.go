@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"social-network/src/app/user/auth/dto"
 	"social-network/src/app/user/auth/repo"
 	"social-network/src/models"
@@ -12,13 +13,13 @@ func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 
 	userID, err := utils.GenerateUUID()
 	if err != nil {
-		return "", err ,500
+		return "", errors.New("failed to generate user ID"), 500
 	}
 
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return "", err ,500
+		return "", errors.New("failed to hash password"), 500
 	}
 
 	
@@ -27,7 +28,7 @@ func RegisterUser(req dto.RegisterRequest) (string, error , int) {
 	now := time.Now().Unix()
 	 dateOfBirth, err := time.Parse("2006-01-02", req.DateOfBirth)
 	if err != nil {
-		return "", err ,400
+		return "", errors.New("invalid date of birth"), 400
 	}
 	user := models.User{
 		ID:           userID,
