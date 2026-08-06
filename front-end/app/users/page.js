@@ -480,22 +480,22 @@ export default function UsersPage() {
                 <Link
                   key={user.id}
                   href={`/users/${user.id}`}
-                  className="group flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.03] p-5 text-center transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+                  className="group relative flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.03] p-5 text-center transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
                 >
+                  {isPrivateAccount(user) ? (
+                    <span
+                      className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/70 backdrop-blur"
+                      title="Private account"
+                      aria-label="Private account"
+                    >
+                      <LockIcon />
+                    </span>
+                  ) : null}
                   {renderAvatar(user.avatar_path, displayName)}
 
                   <div className="w-full overflow-hidden">
                     <div className="flex min-w-0 items-center justify-center gap-2">
                       <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
-                      {isPrivateAccount(user) ? (
-                        <span
-                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/65"
-                          title="Private account"
-                          aria-label="Private account"
-                        >
-                          <LockIcon />
-                        </span>
-                      ) : null}
                     </div>
                     {user.nickname && getDisplayName(user) !== user.nickname ? (
                       <p className="truncate text-xs text-white/45">@{user.nickname}</p>

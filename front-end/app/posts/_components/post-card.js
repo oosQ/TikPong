@@ -324,7 +324,7 @@ function PostOwnerMenu({
 
   return (
     <>
-      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-4 z-20 flex items-center gap-2">
+      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-16 z-20 flex items-center gap-2">
         {canShare ? (
           <button
             type="button"
@@ -349,7 +349,7 @@ function PostOwnerMenu({
           ...
         </button>
         {isOpen ? (
-          <div className="absolute right-0 top-12 min-w-[148px] rounded-2xl bg-[#151515] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+        <div className="absolute right-0 top-12 min-w-[148px] rounded-2xl bg-[#151515] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
             {canEdit ? (
               <button
                 type="button"
@@ -679,15 +679,20 @@ function ExpandableContent({ content, textClassName }) {
 
 function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const postDate = new Date(post.created_at).toLocaleDateString();
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-16 sm:p-6 sm:pt-24">
       <div className="pointer-events-auto w-full max-w-3xl text-left transition">
-        <PostProfileLink
-          userId={post.user_id}
-          label={post.nickname || post.user_id}
-          className="text-xl font-semibold text-white transition hover:text-white/80 sm:text-2xl"
-        />
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <PostProfileLink
+            userId={post.user_id}
+            label={post.nickname || post.user_id}
+            className="truncate text-xl font-semibold text-white transition hover:text-white/80 sm:text-2xl"
+          />
+          <span className="text-sm text-white/45">·</span>
+          <span className="text-sm text-white/55">{postDate}</span>
+        </div>
         <div
           className={`mt-3 transition-all duration-300 ${
             isExpanded ? "max-h-40 overflow-y-auto pr-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "max-h-14 overflow-hidden"
@@ -704,8 +709,7 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
           onHashtagClick={onHashtagClick}
           postId={post.id}
         />
-        <div className="mt-2 flex items-center justify-between gap-4 text-sm text-white/75">
-          <span className="truncate">{new Date(post.created_at).toLocaleDateString()}</span>
+        <div className="mt-2 flex items-center justify-end gap-4 text-sm text-white/75">
           <button
             type="button"
             onClick={() => setIsExpanded((current) => !current)}
@@ -720,12 +724,29 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
 }
 
 function NoImageStage({ post, hashtagMode, onHashtagClick }) {
+  const postDate = new Date(post.created_at).toLocaleDateString();
+
   return (
-    <div className="flex h-full min-h-[100dvh] w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(254,44,85,0.24),transparent_32%),radial-gradient(circle_at_bottom,rgba(37,244,238,0.16),transparent_28%),#0e0e0e] px-6 py-16 text-center max-[1024px]:pr-28 sm:px-10">
-      <div className="mx-auto w-full max-w-[36rem]">
-        <h2 className="mt-4 text-3xl font-semibold text-white">{post.title}</h2>
-        <ExpandableContent content={post.content} textClassName="text-base leading-8 text-white/78" />
-        <div className={hashtagMode === "button" ? "flex justify-center" : "flex justify-center"}>
+    <div className="flex h-full min-h-[100dvh] w-full items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(254,44,85,0.24),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(37,244,238,0.16),transparent_34%),#0b0b0b] px-5 py-20 text-left max-[1024px]:pr-28 sm:px-10">
+      <article className="relative mx-auto w-full max-w-[38rem] overflow-hidden rounded-[32px] border border-white/10 bg-[#111]/92 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.5)] sm:p-8">
+        <div className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <PostProfileLink
+            userId={post.user_id}
+            label={post.nickname || post.user_id}
+            className="truncate text-base font-semibold text-white transition hover:text-white/80"
+          />
+          <span className="text-sm text-white/35">·</span>
+          <span className="text-sm text-white/45">{postDate}</span>
+        </div>
+        {post.title ? (
+          <h2 className="mt-6 break-words text-3xl font-semibold leading-tight text-white sm:text-4xl">
+            {post.title}
+          </h2>
+        ) : null}
+        {post.content ? (
+          <ExpandableContent content={post.content} textClassName="text-base leading-8 text-white/78" />
+        ) : null}
+        <div className="mt-5 flex justify-start">
           <PostHashtags
             hashtags={post.hashtags}
             mode={hashtagMode}
@@ -733,17 +754,7 @@ function NoImageStage({ post, hashtagMode, onHashtagClick }) {
             postId={post.id}
           />
         </div>
-      </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 px-5 pb-5 sm:px-6 sm:pb-6">
-        <div className="text-left">
-          <PostProfileLink
-            userId={post.user_id}
-            label={post.nickname || post.user_id}
-            className="pointer-events-auto block font-semibold text-white transition hover:text-white/80"
-          />
-          <p className="mt-2 text-xs text-white/35">{new Date(post.created_at).toLocaleDateString()}</p>
-        </div>
-      </div>
+      </article>
     </div>
   );
 }

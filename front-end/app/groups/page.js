@@ -2245,15 +2245,15 @@ export default function GroupsPage() {
 
   return (
     <main className="h-dvh overflow-hidden bg-black px-0 py-0 text-white">
-      <div className="grid h-dvh min-w-0 grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className={`${selectedGroup ? "hidden xl:flex" : "flex"} min-h-0 flex-col border-b border-white/10 bg-[#090909] xl:border-b-0 xl:border-r xl:border-white/10`}>
-          <div className="border-b border-white/10 px-5 py-5">
+      <div className={`grid h-dvh min-w-0 ${selectedGroup ? "grid-rows-[minmax(230px,42dvh)_minmax(0,1fr)]" : "grid-rows-1"} sm:grid-cols-[300px_minmax(0,1fr)] sm:grid-rows-1 2xl:grid-cols-[340px_minmax(0,1fr)]`}>
+        <aside className="flex min-h-0 min-w-0 flex-col border-b border-white/10 bg-[#090909] sm:border-b-0 sm:border-r sm:border-white/10">
+          <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-2xl font-semibold tracking-tight text-white">Groups</p>
               <button
                 type="button"
                 onClick={handleOpenGeneralSidebar}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white xl:hidden"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white sm:hidden"
                 aria-label="Open general navigation"
               >
                 <MenuIcon />
@@ -2310,7 +2310,7 @@ export default function GroupsPage() {
                   return (
                     <div
                       key={group.id}
-                      className={`border-b border-white/6 px-5 py-4 transition ${isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"}`}
+                      className={`border-b border-white/6 px-4 py-4 transition sm:px-5 ${isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"}`}
                     >
                       <button
                         type="button"
@@ -2328,7 +2328,7 @@ export default function GroupsPage() {
                             <span className="shrink-0 text-[11px] text-white/30">{formatRelativeDate(group.last_activity)}</span>
                           </div>
                           <p className="truncate text-xs text-white/42">{group.preview}</p>
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${group.is_member ? "bg-[#fe2c55]/14 text-[#ffc1cf]" : "bg-white/[0.06] text-white/45"}`}>
                               {group.is_member ? "Joined" : "Browse"}
                             </span>
@@ -2343,7 +2343,7 @@ export default function GroupsPage() {
                       </button>
 
                       {!group.is_member ? (
-                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                        <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                           <p className="text-xs text-white/38">
                             {joinRequestStatus === "pending" ? "Request pending approval" : "Ask to join this community"}
                           </p>
@@ -2369,23 +2369,13 @@ export default function GroupsPage() {
           </div>
         </aside>
 
-        <section className={`${selectedGroup ? "flex" : "hidden xl:flex"} min-h-0 min-w-0 flex-col overflow-hidden bg-black`}>
+        <section className={`${selectedGroup ? "flex" : "hidden sm:flex"} min-h-0 min-w-0 flex-col overflow-hidden bg-black`}>
           {selectedGroup ? (
             <>
               <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-8 sm:py-6">
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-6">
                     <div className="flex min-w-0 flex-1 items-start gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedGroupId("")}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white xl:hidden"
-                        aria-label="Back to groups"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-                          <path d="M14.5 6.5 9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
                       <GroupAvatar avatarPath={headerAvatar} label={headerTitle} sizeClassName="h-12 w-12 text-sm" />
                       <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
                         <p className="text-lg font-semibold leading-none text-white">{headerTitle}</p>
@@ -2395,7 +2385,7 @@ export default function GroupsPage() {
                       </div>
                     </div>
 
-                    <div className="relative flex shrink-0 items-center gap-3">
+                    <div className="relative flex shrink-0 items-center gap-3 max-sm:hidden">
                       <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 sm:block">
                         {memberCount !== null ? `${formatMemberCount(memberCount)}  ${selectedGroup.is_member ? "• Member access" : "• Browse only"}` : selectedGroup.is_member ? "Member access" : "Browse only"}
                       </div>
@@ -2431,14 +2421,14 @@ export default function GroupsPage() {
                   </div>
                 </div>
 
-                <div className="mt-1 flex flex-wrap gap-2.5">
+                <div className="mt-1 flex gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible sm:pb-0">
                   {availableTabs.map((tab) => (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
                       disabled={!selectedGroup.is_member}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${activeTab === tab.id ? "bg-[#fe2c55] text-white" : "border border-white/12 bg-white/[0.03] text-white/60 hover:bg-white/[0.07]"} ${!selectedGroup.is_member ? "cursor-not-allowed opacity-55" : ""}`}
+                      className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${activeTab === tab.id ? "bg-[#fe2c55] text-white" : "border border-white/12 bg-white/[0.03] text-white/60 hover:bg-white/[0.07]"} ${!selectedGroup.is_member ? "cursor-not-allowed opacity-55" : ""}`}
                     >
                       {tab.label}
                     </button>

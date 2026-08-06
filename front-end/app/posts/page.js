@@ -66,6 +66,8 @@ export default function PostsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [exploreHashtags, setExploreHashtags] = useState([]);
+  const [hashtagsLoading, setHashtagsLoading] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [pendingLikePostIds, setPendingLikePostIds] = useState([]);
   const [pendingRepostPostIds, setPendingRepostPostIds] = useState([]);
@@ -85,10 +87,12 @@ export default function PostsPage() {
   const [loadingEditPostId, setLoadingEditPostId] = useState("");
   const [deletingPostId, setDeletingPostId] = useState("");
   const [blockingUserId, setBlockingUserId] = useState("");
+  const [selectedExplorePostId, setSelectedExplorePostId] = useState("");
 
   const activeQuery = searchParams.get("q") ?? "";
   const activeMode = searchParams.get("mode") ?? "";
   const feedRequestKey = `${activeMode}::${activeQuery}`;
+  const isExploreMode = activeMode === "explore";
 
   async function loadPosts(cursor = "", queryValue = activeQuery, modeValue = activeMode) {
     const query = new URLSearchParams({ limit: "20" });
@@ -170,6 +174,49 @@ export default function PostsPage() {
   }, [activeQuery]);
 
   useEffect(() => {
+    setSelectedExplorePostId("");
+  }, [feedRequestKey]);
+
+  useEffect(() => {
+    if (!isExploreMode) {
+      setExploreHashtags([]);
+      return undefined;
+    }
+
+    let ignore = false;
+
+    async function fetchExploreHashtags() {
+      setHashtagsLoading(true);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/hashtags?limit=20`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const payload = await parseResponse(response);
+
+        if (!ignore && response.ok && payload?.success) {
+          setExploreHashtags(payload?.data?.hashtags || []);
+        }
+      } catch {
+        if (!ignore) {
+          setExploreHashtags([]);
+        }
+      } finally {
+        if (!ignore) {
+          setHashtagsLoading(false);
+        }
+      }
+    }
+
+    fetchExploreHashtags();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isExploreMode]);
+
+  useEffect(() => {
     let ignore = false;
 
     async function fetchCurrentUser() {
@@ -242,6 +289,17 @@ export default function PostsPage() {
       observer.disconnect();
     };
   }, [isLoading, isLoadingMore, nextCursor, feedRequestKey]);
+
+  useEffect(() => {
+    if (!selectedExplorePostId || !feedScrollRef.current) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const selectedPost = feedScrollRef.current?.querySelector(`[data-post-id="${selectedExplorePostId}"]`);
+      selectedPost?.scrollIntoView({ block: "start" });
+    });
+  }, [selectedExplorePostId]);
 
   useEffect(() => {
     if (!feedScrollRef.current || !currentUser || posts.length === 0) {
@@ -429,6 +487,80 @@ export default function PostsPage() {
     }
 
     router.push(`/hashtags/${encodeURIComponent(normalizedHashtagName)}`);
+  }
+
+  function renderExploreHashtags() {
+    if (!isExploreMode) {
+      return null;
+    }
+
+    return (
+      <div className="sticky top-0 z-20 -mx-4 border-b border-white/10 bg-black/92 px-4 py-3 backdrop-blur xl:-mx-8 xl:px-8">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {hashtagsLoading && exploreHashtags.length === 0 ? (
+            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/45">
+              Loading hashtags...
+            </span>
+          ) : null}
+          {exploreHashtags.map((hashtag) => {
+            const name = hashtag.name || hashtag.hashtag || "";
+            if (!name) {
+              return null;
+            }
+
+            return (
+              <button
+                key={hashtag.id || name}
+                type="button"
+                onClick={() => handleHashtagClick(name)}
+                className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-[#fe2c55]/60 hover:bg-[#fe2c55]/14 hover:text-white"
+              >
+                #{name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function renderExploreGrid() {
+    if (!isExploreMode || selectedExplorePostId || isLoading || errorMessage || posts.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mx-auto max-w-6xl px-0 py-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {posts.map((post) => (
+            <button
+              key={post.id}
+              type="button"
+              onClick={() => setSelectedExplorePostId(post.id)}
+              className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-[#101010] text-left transition hover:border-white/25"
+            >
+              {post.image_path ? (
+                <img
+                  src={normalizeImagePath(post.image_path)}
+                  alt={post.title || post.nickname || "Post"}
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(254,44,85,0.28),transparent_42%),#101010] px-4 text-center">
+                  <p className="line-clamp-6 text-sm font-semibold leading-6 text-white/88">
+                    {post.content || post.title || "Post"}
+                  </p>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3">
+                <p className="truncate text-sm font-semibold text-white">{post.title || post.nickname || "Post"}</p>
+                <p className="mt-1 truncate text-xs text-white/55">@{post.nickname || post.user_id}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   async function handleToggleLike(post) {
@@ -992,8 +1124,10 @@ export default function PostsPage() {
                 Loading comments...
               </div>
             ) : comments.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
-                No comments yet.
+              <div className="flex min-h-full items-center justify-center px-4 text-center">
+                <p className="max-w-[220px] text-sm leading-6 text-white/35">
+                  no comment yet, be the first one
+                </p>
               </div>
             ) : (
               <div className="flex flex-col gap-5">
@@ -1071,36 +1205,9 @@ export default function PostsPage() {
           <div className="border-t border-white/10 p-5">
             {currentUser ? (
               <div className="space-y-3">
-                <textarea
-                  value={commentDraft}
-                  onChange={(event) =>
-                    setCommentDraftByPostId((current) => ({
-                      ...current,
-                      [activeCommentsPostId]: event.target.value,
-                    }))
-                  }
-                  placeholder="Write a comment"
-                  rows={3}
-                  className="w-full resize-none rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/25"
-                />
-                <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/75">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-                    <span>Add image</span>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/gif"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        setCommentImageByPostId((current) => ({
-                          ...current,
-                          [activeCommentsPostId]: file,
-                        }));
-                      }}
-                    />
-                  </label>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 transition focus-within:border-white/25">
                   {selectedImage ? (
-                    <div className="flex items-center gap-3">
+                    <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl bg-black/25 px-3 py-2">
                       <span className="max-w-[140px] truncate text-xs text-white/55">
                         {selectedImage.name}
                       </span>
@@ -1117,18 +1224,45 @@ export default function PostsPage() {
                         Remove
                       </button>
                     </div>
-                  ) : (
-                    <span className="text-xs text-white/40">PNG, JPG, GIF</span>
-                  )}
+                  ) : null}
+                  <textarea
+                    value={commentDraft}
+                    onChange={(event) =>
+                      setCommentDraftByPostId((current) => ({
+                        ...current,
+                        [activeCommentsPostId]: event.target.value,
+                      }))
+                    }
+                    placeholder="Write a comment"
+                    rows={3}
+                    className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white">
+                      <span>Image</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setCommentImageByPostId((current) => ({
+                            ...current,
+                            [activeCommentsPostId]: file,
+                          }));
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleCreateComment}
+                      disabled={isSubmittingComment}
+                      className="rounded-full bg-[#fe2c55] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSubmittingComment ? "Posting..." : "Post"}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCreateComment}
-                  disabled={isSubmittingComment}
-                  className="w-full rounded-full bg-[#fe2c55] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmittingComment ? "Posting..." : "Post comment"}
-                </button>
               </div>
             ) : (
               <button
@@ -1152,6 +1286,7 @@ export default function PostsPage() {
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth snap-y snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div className="mx-auto max-w-7xl px-4 py-0 xl:px-8">
+        {renderExploreHashtags()}
         {errorMessage ? (
           <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {errorMessage}
@@ -1168,8 +1303,21 @@ export default function PostsPage() {
             No posts found.
             </div>
           </div>
+        ) : isExploreMode && !selectedExplorePostId ? (
+          renderExploreGrid()
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-0">
+            {isExploreMode ? (
+              <div className="sticky top-[57px] z-10 flex justify-center py-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedExplorePostId("")}
+                  className="rounded-full border border-white/10 bg-black/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70 backdrop-blur transition hover:bg-white/10 hover:text-white"
+                >
+                  Back to explore
+                </button>
+              </div>
+            ) : null}
             {posts.map((post) => (
               <FeedPostCard
                 key={post.id}
@@ -1199,7 +1347,7 @@ export default function PostsPage() {
             </div>
           )}
 
-        {!isLoading ? (
+        {!isLoading && (!isExploreMode || selectedExplorePostId) ? (
           <div ref={loadMoreRef} className="mt-10 flex snap-none justify-center pb-8">
             {isLoadingMore ? (
               <div className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-white/65">
