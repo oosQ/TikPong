@@ -21,7 +21,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:8433
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8433
     depends_on:
       - backend
     restart: unless-stopped

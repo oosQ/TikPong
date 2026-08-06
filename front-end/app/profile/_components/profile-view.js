@@ -370,6 +370,7 @@ export default function ProfileView({
   connections = [],
   isConnectionsLoading = false,
   connectionsError = "",
+  showBlockedConnectionsTab = false,
   currentUserId = "",
   onEditPost,
   onDeletePost,
@@ -389,7 +390,12 @@ export default function ProfileView({
   const isGridLoading = isLoading || (activeTab === "liked" && isLikedPostsLoading) || (activeTab === "reposts" && isRepostPostsLoading);
   const gridErrorMessage = activeTab === "liked" ? likedPostsError : activeTab === "reposts" ? repostPostsError : "";
   const isUnfollowAction = !isSelf && (followActionLabel === "Unfollow" || Number(profile?.is_following) === 1);
-  const connectionsLabel = activeConnectionsTab === "followers" ? "Followers" : "Following";
+  const connectionsLabel =
+    activeConnectionsTab === "followers"
+      ? "Followers"
+      : activeConnectionsTab === "blocked"
+        ? "Blocked"
+        : "Following";
 
   useEffect(() => {
     return () => {
@@ -1020,6 +1026,15 @@ export default function ProfileView({
                 >
                   Followers {formatCount(profile.total_followers)}
                 </button>
+                {showBlockedConnectionsTab ? (
+                  <button
+                    type="button"
+                    onClick={() => onConnectionsTabChange?.("blocked")}
+                    className={activeConnectionsTab === "blocked" ? "border-b-2 border-white px-4 py-4 text-sm font-semibold text-white" : "px-4 py-4 text-sm font-semibold text-white/35 transition hover:text-white/60"}
+                  >
+                    Blocked
+                  </button>
+                ) : null}
               </div>
 
               <div className="max-h-[60vh] overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-6">
@@ -1053,7 +1068,11 @@ export default function ProfileView({
                           </div>
                         </div>
                         <div className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/85">
-                          {activeConnectionsTab === "following" ? "Following" : "Profile"}
+                          {activeConnectionsTab === "following"
+                            ? "Following"
+                            : activeConnectionsTab === "blocked"
+                              ? "Blocked"
+                              : "Profile"}
                         </div>
                       </Link>
                     ))}

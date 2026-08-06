@@ -69,6 +69,7 @@ export default function PostsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [pendingLikePostIds, setPendingLikePostIds] = useState([]);
   const [pendingRepostPostIds, setPendingRepostPostIds] = useState([]);
+  const [pendingFollowUserIds, setPendingFollowUserIds] = useState([]);
   const [activeCommentsPostId, setActiveCommentsPostId] = useState("");
   const [commentsByPostId, setCommentsByPostId] = useState({});
   const [commentsLoadingPostId, setCommentsLoadingPostId] = useState("");
@@ -560,6 +561,49 @@ export default function PostsPage() {
     }
   }
 
+  async function handleFollowPostUser(post) {
+    if (!currentUser) {
+      setErrorMessage("Login first to follow users");
+      router.push("/auth/login");
+      return;
+    }
+
+    if (!post?.user_id || post.user_id === currentUser.id || pendingFollowUserIds.includes(post.user_id)) {
+      return;
+    }
+
+    const userId = post.user_id;
+    setPendingFollowUserIds((current) => [...current, userId]);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/follows/${userId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const payload = await parseResponse(response);
+
+      if (!response.ok || !payload?.success) {
+        if (response.status === 401) {
+          router.push("/auth/login");
+          return;
+        }
+
+        throw new Error(payload?.error || "Failed to follow user");
+      }
+
+      setPosts((currentPosts) =>
+        currentPosts.map((item) =>
+          item.user_id === userId ? { ...item, is_following: 1 } : item
+        )
+      );
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to follow user");
+    } finally {
+      setPendingFollowUserIds((current) => current.filter((id) => id !== userId));
+    }
+  }
+
   async function fetchComments(postId) {
     setCommentsLoadingPostId(postId);
     setCommentsErrorMessage("");
@@ -1020,9 +1064,6 @@ export default function PostsPage() {
                           className="mt-3 max-h-56 w-full rounded-2xl object-cover"
                         />
                       ) : null}
-                      <div className="mt-3 flex items-center gap-3 text-xs text-white/45">
-                        <span>{formatCount(comment.total_likes)} likes</span>
-                      </div>
                     </div>
                   </article>
                 ))}
@@ -1144,6 +1185,7 @@ export default function PostsPage() {
                 onLikeToggle={handleToggleLike}
                 onRepostToggle={handleToggleRepost}
                 onCommentsToggle={handleCommentsToggle}
+                onFollowUser={handleFollowPostUser}
                 onEditPost={handleOpenEditPost}
                 onDeletePost={handleDeletePost}
                 onBlockUser={handleBlockUser}
@@ -1152,6 +1194,8 @@ export default function PostsPage() {
                 isBlockPending={blockingUserId === post.user_id}
                 isLikePending={pendingLikePostIds.includes(post.id)}
                 isRepostPending={pendingRepostPostIds.includes(post.id)}
+                isFollowUserPending={pendingFollowUserIds.includes(post.user_id)}
+                showFollowUserButton={activeMode === "explore" && post.user_id !== currentUser?.id}
                 activeCommentsPostId={activeCommentsPostId}
               />
             ))}

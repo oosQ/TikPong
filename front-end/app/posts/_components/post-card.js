@@ -99,6 +99,59 @@ function PostAvatar({ avatarPath, label, sizeClassName }) {
   );
 }
 
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FontAwesomeSvgIcon({ title, path, viewBox = "0 0 512 512", className = "h-5 w-5" }) {
+  return (
+    <svg viewBox={viewBox} fill="currentColor" aria-label={title} role="img" className={className}>
+      <path d={path} />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <FontAwesomeSvgIcon
+      title="Like"
+      path="M47.6 300.4 228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8C512 115.2 455.1 58.3 385.2 58.3c-37.9 0-74 16.9-98.3 46.1L256 141.5l-30.9-37.1c-24.3-29.2-60.4-46.1-98.3-46.1C56.9 58.3 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"
+    />
+  );
+}
+
+function CommentIcon() {
+  return (
+    <FontAwesomeSvgIcon
+      title="Comments"
+      path="M512 240c0 114.9-114.6 208-256 208c-37.1 0-72.3-6.4-104.1-17.9c-11.9 8.7-31.3 20.6-54.3 30.6C73.6 471.1 44.7 480 16 480c-6.5 0-12.3-3.9-14.8-9.9c-2.5-6-1.1-12.8 3.4-17.4l0 0 0 0 0 0 0 0 .3-.3c.3-.3 .7-.7 1.3-1.4c1.1-1.2 2.8-3.1 4.9-5.7c4.1-5 9.6-12.4 15.2-21.6c10-16.6 19.5-38.4 21.4-62.9C17.7 326.8 0 285.1 0 240C0 125.1 114.6 32 256 32s256 93.1 256 208z"
+    />
+  );
+}
+
+function EyeIcon() {
+  return (
+    <FontAwesomeSvgIcon
+      title="Views"
+      path="M256 32c-57.5 0-105.6 28.5-143.7 64.6C74.3 132.6 46.1 176.1 28.6 207.8c-9.4 17-9.4 37.4 0 54.4c17.5 31.7 45.7 75.2 83.7 111.2C150.4 409.5 198.5 438 256 438s105.6-28.5 143.7-64.6c38-36 66.2-79.5 83.7-111.2c9.4-17 9.4-37.4 0-54.4c-17.5-31.7-45.7-75.2-83.7-111.2C361.6 60.5 313.5 32 256 32zm0 320a96 96 0 1 1 0-192 96 96 0 1 1 0 192zm0-144a48 48 0 1 0 0 96 48 48 0 1 0 0-96z"
+    />
+  );
+}
+
+function RepostIcon() {
+  return (
+    <FontAwesomeSvgIcon
+      title="Repost"
+      viewBox="0 0 640 512"
+      path="M629.7 343.6 529 444.3c-9.4 9.4-24.6 9.4-33.9 0L394.3 343.6c-15.1-15.1-4.4-41 17-41H480V160H292.5l-64-64H480c35.3 0 64 28.7 64 64v142.6h68.7c21.4 0 32.1 25.9 17 41zM160 352h187.5l64 64H160c-35.3 0-64-28.7-64-64V209.4H27.3c-21.4 0-32.1-25.9-17-41L111 67.7c9.4-9.4 24.6-9.4 33.9 0l100.7 100.7c15.1 15.1 4.4 41-17 41H160V352z"
+    />
+  );
+}
+
 function PostOwnerMenu({
   post,
   currentUserId,
@@ -421,6 +474,9 @@ function PostActionRail({
   onLikeToggle,
   onRepostToggle,
   onCommentsToggle,
+  onFollowUser,
+  showFollowUserButton = false,
+  isFollowUserPending = false,
 }) {
   if (mode === "none") {
     return null;
@@ -429,6 +485,7 @@ function PostActionRail({
   const isInteractive = mode === "interactive";
   const isLiked = Number(post.is_liked) === 1;
   const isReposted = Number(post.is_reposted) === 1;
+  const canShowFollowButton = isInteractive && showFollowUserButton && Number(post.is_following) !== 1;
   const railTone = isInteractive && isLiked ? "bg-[#fe2c55] text-white" : "bg-white/10 text-white/75";
   const repostTone = isInteractive && isReposted ? "bg-[#25f4ee] text-black" : "bg-white/10 text-white/75";
 
@@ -439,17 +496,32 @@ function PostActionRail({
   return (
     <div className={containerClassName}>
       <div className="shrink-0 self-center">
-        <Link
-          href={`/users/${post.user_id}`}
-          className="block transition hover:opacity-85"
-          aria-label={`Open ${post.nickname || post.user_id} profile`}
-        >
-          <PostAvatar
-            avatarPath={post.avatar_path}
-            label={post.nickname || post.user_id}
-            sizeClassName="h-12 w-12"
-          />
-        </Link>
+        <div className="relative">
+          <Link
+            href={`/users/${post.user_id}`}
+            className="block transition hover:opacity-85"
+            aria-label={`Open ${post.nickname || post.user_id} profile`}
+          >
+            <PostAvatar
+              avatarPath={post.avatar_path}
+              label={post.nickname || post.user_id}
+              sizeClassName="h-12 w-12"
+            />
+          </Link>
+          {canShowFollowButton ? (
+            <button
+              type="button"
+              onMouseDown={preventPointerFocus}
+              onClick={() => onFollowUser?.(post)}
+              disabled={isFollowUserPending}
+              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-black bg-[#fe2c55] text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)] transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-65"
+              aria-label={`Follow ${post.nickname || post.user_id}`}
+              title={`Follow ${post.nickname || post.user_id}`}
+            >
+              {isFollowUserPending ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : <PlusIcon />}
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
         {isInteractive ? (
@@ -460,11 +532,11 @@ function PostActionRail({
             disabled={isLikePending}
             className={`flex h-12 w-12 items-center justify-center rounded-full ${railTone} transition disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            {isLikePending ? "..." : "L"}
+            {isLikePending ? "..." : <HeartIcon />}
           </button>
         ) : (
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
-            L
+            <HeartIcon />
           </div>
         )}
         <span className="mt-2">{formatCount(post.total_likes)}</span>
@@ -479,18 +551,18 @@ function PostActionRail({
               isCommentsActive ? "bg-white text-black" : "bg-white/10 text-white/75"
             }`}
           >
-            C
+            <CommentIcon />
           </button>
         ) : (
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
-            C
+            <CommentIcon />
           </div>
         )}
         <span className="mt-2">{formatCount(post.total_comments)}</span>
       </div>
       <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
-          V
+          <EyeIcon />
         </div>
         <span className="mt-2">{formatCount(post.total_views)}</span>
       </div>
@@ -501,13 +573,13 @@ function PostActionRail({
             onMouseDown={preventPointerFocus}
             onClick={() => onRepostToggle?.(post)}
             disabled={isRepostPending}
-            className={`flex h-12 w-12 items-center justify-center rounded-full ${repostTone} text-[11px] font-semibold uppercase tracking-[0.18em] transition disabled:cursor-not-allowed disabled:opacity-60`}
+            className={`flex h-12 w-12 items-center justify-center rounded-full ${repostTone} transition disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            {isRepostPending ? "..." : "RP"}
+            {isRepostPending ? "..." : <RepostIcon />}
           </button>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">
-            RP
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
+            <RepostIcon />
           </div>
         )}
       </div>
@@ -671,6 +743,7 @@ export function FeedPostCard({
   onLikeToggle,
   onRepostToggle,
   onCommentsToggle,
+  onFollowUser,
   onEditPost,
   onDeletePost,
   onBlockUser,
@@ -679,7 +752,9 @@ export function FeedPostCard({
   isBlockPending = false,
   isLikePending = false,
   isRepostPending = false,
+  isFollowUserPending = false,
   activeCommentsPostId = "",
+  showFollowUserButton = false,
 }) {
   const showRails = actionRailMode !== "none";
   const resolvedArticleClassName =
@@ -725,6 +800,9 @@ export function FeedPostCard({
               onLikeToggle={onLikeToggle}
               onRepostToggle={onRepostToggle}
               onCommentsToggle={onCommentsToggle}
+              onFollowUser={onFollowUser}
+              showFollowUserButton={showFollowUserButton}
+              isFollowUserPending={isFollowUserPending}
               containerClassName="absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col items-center gap-4 px-2 py-4 max-[1024px]:flex"
             />
           ) : null}
@@ -741,6 +819,9 @@ export function FeedPostCard({
           onLikeToggle={onLikeToggle}
           onRepostToggle={onRepostToggle}
           onCommentsToggle={onCommentsToggle}
+          onFollowUser={onFollowUser}
+          showFollowUserButton={showFollowUserButton}
+          isFollowUserPending={isFollowUserPending}
           containerClassName="hidden items-center justify-center gap-5 px-2 pb-2 min-[1025px]:flex lg:flex-col lg:justify-end lg:gap-4 lg:px-0 lg:pb-14"
         />
       ) : null}

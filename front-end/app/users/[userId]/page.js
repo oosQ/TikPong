@@ -195,8 +195,9 @@ export default function UserProfilePage() {
 
     const isFollowing = Number(profile.is_following) === 1;
     const isPrivate = !profile.is_public;
+    const shouldCancelPendingRequest = isPrivate && !isFollowing && hasPendingFollowRequest;
     const endpoint = isPrivate && !isFollowing ? "/api/follow-requests/" : "/api/follows/";
-    const method = isFollowing ? "DELETE" : "POST";
+    const method = isFollowing || shouldCancelPendingRequest ? "DELETE" : "POST";
 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}${profile.id}`, {
@@ -208,11 +209,19 @@ export default function UserProfilePage() {
       if (!response.ok || !payload?.success) {
         throw new Error(
           payload?.error ||
-            (isFollowing ? "Failed to unfollow user" : isPrivate ? "Failed to send follow request" : "Failed to follow user")
+            (isFollowing
+              ? "Failed to unfollow user"
+              : shouldCancelPendingRequest
+                ? "Failed to cancel follow request"
+                : isPrivate
+                  ? "Failed to send follow request"
+                  : "Failed to follow user")
         );
       }
 
-      if (isPrivate && !isFollowing) {
+      if (shouldCancelPendingRequest) {
+        setHasPendingFollowRequest(false);
+      } else if (isPrivate && !isFollowing) {
         setHasPendingFollowRequest(true);
       }
 
@@ -402,7 +411,7 @@ export default function UserProfilePage() {
       followActionError={followActionError}
       isBlockActionLoading={isBlockActionLoading}
       blockActionError={blockActionError}
-      isFollowActionDisabled={hasPendingFollowRequest && Number(profile?.is_following) !== 1}
+      isFollowActionDisabled={false}
       isConnectionsModalOpen={isConnectionsModalOpen}
       activeConnectionsTab={activeConnectionsTab}
       onOpenConnectionsModal={handleOpenConnectionsModal}

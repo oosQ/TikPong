@@ -2244,8 +2244,8 @@ export default function GroupsPage() {
   const memberCount = getGroupMemberCount(selectedGroup);
 
   return (
-    <main className="h-screen overflow-hidden bg-black px-0 py-0 text-white">
-      <div className="grid h-screen grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <main className="h-dvh overflow-hidden bg-black px-0 py-0 text-white">
+      <div className="grid h-dvh min-w-0 grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className={`${selectedGroup ? "hidden xl:flex" : "flex"} min-h-0 flex-col border-b border-white/10 bg-[#090909] xl:border-b-0 xl:border-r xl:border-white/10`}>
           <div className="border-b border-white/10 px-5 py-5">
             <div className="flex items-center justify-between gap-3">
@@ -2369,10 +2369,10 @@ export default function GroupsPage() {
           </div>
         </aside>
 
-        <section className={`${selectedGroup ? "flex" : "hidden xl:flex"} min-h-0 flex-col bg-black`}>
+        <section className={`${selectedGroup ? "flex" : "hidden xl:flex"} min-h-0 min-w-0 flex-col overflow-hidden bg-black`}>
           {selectedGroup ? (
             <>
-              <div className="border-b border-white/10 px-6 py-6 sm:px-8">
+              <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-8 sm:py-6">
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-6">
                     <div className="flex min-w-0 flex-1 items-start gap-4">

@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	notificationservices "social-network/src/app/notification/services"
+	userrepo "social-network/src/app/user/core/repo"
 	"social-network/src/app/user/follow/repo"
 )
 
@@ -34,5 +36,15 @@ func FollowUser(currentUserID, followingID string) error {
 		return errors.New("already following this user")
 	}
 
-	return repo.CreateFollow(currentUserID, followingID)
+	if err := repo.CreateFollow(currentUserID, followingID); err != nil {
+		return err
+	}
+
+	followerName := userrepo.GetUserDisplayName(currentUserID)
+	_ = notificationservices.CreateAndDispatch(followingID, "follow", "New follower", followerName+" started following you", map[string]any{
+		"from_user_id":   currentUserID,
+		"from_user_name": followerName,
+	})
+
+	return nil
 }

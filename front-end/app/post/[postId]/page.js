@@ -1043,9 +1043,6 @@ export default function PostDetailsPage() {
                           className="mt-3 max-h-56 w-full rounded-2xl object-cover"
                         />
                       ) : null}
-                      <div className="mt-3 flex items-center gap-3 text-xs text-white/45">
-                        <span>{formatCount(comment.total_likes)} likes</span>
-                      </div>
                     </div>
                   </article>
                 ))}

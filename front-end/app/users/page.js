@@ -41,6 +41,20 @@ function renderAvatar(avatarPath, label) {
   );
 }
 
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-3.5 w-3.5">
+      <path
+        d="M7.5 10V8.2a4.5 4.5 0 0 1 9 0V10M6.8 10h10.4A1.8 1.8 0 0 1 19 11.8v6.4a1.8 1.8 0 0 1-1.8 1.8H6.8A1.8 1.8 0 0 1 5 18.2v-6.4A1.8 1.8 0 0 1 6.8 10Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function getDisplayName(user) {
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
 
@@ -53,6 +67,24 @@ function getDisplayName(user) {
   }
 
   return "User";
+}
+
+function isPrivateAccount(user) {
+  const value = user?.is_public;
+
+  if (typeof value === "boolean") {
+    return !value;
+  }
+
+  if (typeof value === "number") {
+    return value === 0;
+  }
+
+  if (typeof value === "string") {
+    return ["0", "false", "private"].includes(value.trim().toLowerCase());
+  }
+
+  return false;
 }
 
 export default function UsersPage() {
@@ -455,7 +487,18 @@ export default function UsersPage() {
                   {renderAvatar(user.avatar_path, displayName)}
 
                   <div className="w-full overflow-hidden">
-                    <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
+                    <div className="flex min-w-0 items-center justify-center gap-2">
+                      <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
+                      {isPrivateAccount(user) ? (
+                        <span
+                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/65"
+                          title="Private account"
+                          aria-label="Private account"
+                        >
+                          <LockIcon />
+                        </span>
+                      ) : null}
+                    </div>
                     {user.nickname && getDisplayName(user) !== user.nickname ? (
                       <p className="truncate text-xs text-white/45">@{user.nickname}</p>
                     ) : null}

@@ -58,6 +58,7 @@ export default function MyProfilePage() {
   const [connectionsByTab, setConnectionsByTab] = useState({
     following: [],
     followers: [],
+    blocked: [],
   });
   const [loadedConnectionsTabs, setLoadedConnectionsTabs] = useState([]);
   const [isConnectionsLoading, setIsConnectionsLoading] = useState(false);
@@ -327,7 +328,12 @@ export default function MyProfilePage() {
   }
 
   async function fetchConnections(tab) {
-    const endpoint = tab === "followers" ? "/api/followers?limit=100" : "/api/following?limit=100";
+    const endpoint =
+      tab === "followers"
+        ? "/api/followers?limit=100"
+        : tab === "blocked"
+          ? "/api/blocks?limit=100"
+          : "/api/following?limit=100";
 
     setIsConnectionsLoading(true);
     setConnectionsError("");
@@ -611,6 +617,7 @@ export default function MyProfilePage() {
         connections={connectionsByTab[activeConnectionsTab] || []}
         isConnectionsLoading={isConnectionsLoading}
         connectionsError={connectionsError}
+        showBlockedConnectionsTab
         currentUserId={profile?.id || ""}
         onEditPost={handleOpenEditPost}
         onDeletePost={handleDeletePost}
