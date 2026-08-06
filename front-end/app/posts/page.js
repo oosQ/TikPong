@@ -916,31 +916,28 @@ export default function PostsPage() {
         onSubmit={handleSearchSubmit}
         className={
           isCompact
-            ? "flex w-full flex-col gap-3 rounded-[28px] border border-white/10 bg-black/80 p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur"
-            : "flex flex-col gap-3 rounded-full border border-white/10 bg-black/80 p-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur sm:flex-row"
+            ? "w-full rounded-full border border-white/10 bg-black/80 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur"
+            : "rounded-full border border-white/10 bg-black/80 px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur"
         }
       >
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search posts"
-          className="flex-1 rounded-full border border-white/10 bg-white/8 px-5 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/30"
-        />
-        <div className={isCompact ? "grid grid-cols-1 gap-3" : "contents"}>
-          <button
-            type="submit"
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/85"
-          >
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={handleClearSearch}
-            className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            Clear
-          </button>
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search posts"
+            className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+          />
+          {searchInput ? (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/55 transition hover:bg-white/15 hover:text-white"
+              aria-label="Clear search"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          ) : null}
         </div>
       </form>
     );

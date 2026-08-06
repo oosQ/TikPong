@@ -92,6 +92,20 @@ function buildProfileShareUrl(profile) {
   return window.location.href;
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <path
+        d="M8.5 12 15 7m-6.5 5 6.5 5M7 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM17 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM17 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function renderProfileAvatar(profile, avatarPreviewUrl, isSelf, onAvatarClick) {
   const avatar = avatarPreviewUrl || profile?.avatar_path;
   const content = avatar ? (
@@ -678,8 +692,9 @@ export default function ProfileView({
                   <button
                     type="button"
                     onClick={handleShareProfile}
-                    className="rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
                   >
+                    <ShareIcon />
                     Share
                   </button>
                   {!isSelf && onBlockUser ? (

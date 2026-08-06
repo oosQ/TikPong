@@ -39,6 +39,7 @@ type UserListItem struct {
 	Nickname    string `json:"nickname"`
 	AvatarPath  string `json:"avatar_path"`
 	IsFollowing int    `json:"is_following"`
+	IsPublic    bool   `json:"is_public"`
 }
 
 type SearchUsersResponse struct {

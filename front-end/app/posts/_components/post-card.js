@@ -107,6 +107,20 @@ function PlusIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <path
+        d="M8.5 12 15 7m-6.5 5 6.5 5M7 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM17 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM17 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function FontAwesomeSvgIcon({ title, path, viewBox = "0 0 512 512", className = "h-5 w-5" }) {
   return (
     <svg viewBox={viewBox} fill="currentColor" aria-label={title} role="img" className={className}>
@@ -310,7 +324,21 @@ function PostOwnerMenu({
 
   return (
     <>
-      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-4 z-20">
+      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-4 z-20 flex items-center gap-2">
+        {canShare ? (
+          <button
+            type="button"
+            onClick={() => {
+              void handleSharePost();
+            }}
+            disabled={isLoading || isDeletePending || isBlockPending || Boolean(sharingRecipientId)}
+            className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-black shadow-[0_12px_28px_rgba(0,0,0,0.35)] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Share post"
+          >
+            <ShareIcon />
+            <span>Share</span>
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
@@ -333,18 +361,6 @@ function PostOwnerMenu({
                 className="flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Edit
-              </button>
-            ) : null}
-            {canShare ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSharePost();
-                }}
-                disabled={isLoading || isDeletePending || isBlockPending || Boolean(sharingRecipientId)}
-                className="flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Share
               </button>
             ) : null}
             {canDelete ? (

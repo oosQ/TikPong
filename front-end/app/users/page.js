@@ -55,6 +55,14 @@ function LockIcon() {
   );
 }
 
+function ClearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function getDisplayName(user) {
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
 
@@ -391,31 +399,26 @@ export default function UsersPage() {
         <div className="w-full max-w-7xl">
           <form
             onSubmit={handleSearchSubmit}
-            className="pointer-events-auto rounded-[26px] border border-white/10 bg-[#090909]/88 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            className="pointer-events-auto rounded-full border border-white/10 bg-[#090909]/88 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           >
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search users by nickname or name"
-                className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
               />
-              <div className="grid grid-cols-2 gap-3 sm:flex sm:w-auto">
-                <button
-                  type="submit"
-                  className="rounded-full bg-[#fe2c55] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b]"
-                >
-                  Search
-                </button>
+              {searchInput ? (
                 <button
                   type="button"
                   onClick={handleSearchClear}
-                  className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/55 transition hover:bg-white/15 hover:text-white"
+                  aria-label="Clear search"
                 >
-                  Clear
+                  <ClearIcon />
                 </button>
-              </div>
+              ) : null}
             </div>
           </form>
         </div>
@@ -429,30 +432,25 @@ export default function UsersPage() {
               <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Users</h1>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="w-full max-w-xl rounded-[28px] border border-white/10 bg-black/30 p-3">
-              <div className="flex flex-col gap-3 sm:flex-row">
+            <form onSubmit={handleSearchSubmit} className="w-full max-w-xl rounded-full border border-white/10 bg-black/30 px-4 py-3">
+              <div className="flex items-center gap-3">
                 <input
                   type="text"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Search users by nickname or name"
-                  className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm text-white outline-none placeholder:text-white/35"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
                 />
-                <div className="grid grid-cols-2 gap-3 sm:flex sm:w-auto">
-                  <button
-                    type="submit"
-                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-white/85"
-                  >
-                    Search
-                  </button>
+                {searchInput ? (
                   <button
                     type="button"
                     onClick={handleSearchClear}
-                    className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/55 transition hover:bg-white/15 hover:text-white"
+                    aria-label="Clear search"
                   >
-                    Clear
+                    <ClearIcon />
                   </button>
-                </div>
+                ) : null}
               </div>
             </form>
           </div>

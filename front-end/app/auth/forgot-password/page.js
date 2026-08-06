@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-xl rounded-[32px] border border-white/10 bg-white/[0.03] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur sm:p-10">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/40">
-            Social Network
+            TikPong
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
             Forgot password

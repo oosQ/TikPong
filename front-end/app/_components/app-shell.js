@@ -135,6 +135,14 @@ function SearchIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
+      <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function MenuIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
@@ -227,18 +235,15 @@ function NavItem({ href, label, description, icon, pathname, itemKey, activeQuer
   return (
     <Link
       href={href}
-      className={`group flex items-center gap-4 rounded-[22px] border px-4 py-3 transition ${
+      className={`group flex items-center gap-4 rounded-xl px-2 py-3 transition ${
         isActive
-          ? "border-[#fe2c55]/60 bg-[#fe2c55]/12 text-white"
-          : "border-white/10 bg-white/[0.03] text-white/72 hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+          ? "text-[#fe2c55]"
+          : "text-white/82 hover:text-white"
       }`}
     >
-      {icon}
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{label}</span>
-        <span className="mt-1 block text-xs text-white/40 transition group-hover:text-white/55">
-          {description}
-        </span>
+        <span className="block truncate text-lg font-semibold">{label}</span>
       </span>
       {badge > 0 ? (
         <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#fe2c55] px-1.5 text-[10px] font-bold text-white leading-none">
@@ -284,26 +289,23 @@ function LeftNavBar({
           </button>
         </div>
       ) : null}
-      <Link href="/posts" className="rounded-[26px] border border-white/10 bg-white/[0.03] px-4 py-4">
-        <span className="block text-[11px] uppercase tracking-[0.4em] text-white/40">Social</span>
-        <span className="mt-1 block text-3xl font-semibold tracking-tight text-white">Network</span>
+      <Link href="/posts" className="px-2 py-3">
+        <span className="block text-3xl font-black tracking-tight text-white">
+          Tik<span className="text-[#fe2c55]">Pong</span>
+        </span>
       </Link>
 
       {
         <form
           onSubmit={onSearchSubmit}
-          className={`mt-4 rounded-[30px] border p-3 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur transition ${
+          className={`mt-4 rounded-full border px-4 py-3 transition ${
             isSearchActive
               ? "border-[#fe2c55]/60 bg-[#fe2c55]/10"
-              : "border-white/10 bg-white/[0.03]"
+              : "border-white/10 bg-white/[0.06]"
           }`}
         >
           <div
-            className={`flex items-center gap-2 rounded-full border px-4 py-3 transition ${
-              isSearchActive
-                ? "border-[#fe2c55]/45 bg-[#fe2c55]/12"
-                : "border-white/10 bg-white/[0.08]"
-            }`}
+            className="flex items-center gap-2"
           >
             <span className={`shrink-0 ${isSearchActive ? "text-white" : "text-white/40"}`}>
               <SearchIcon />
@@ -315,21 +317,16 @@ function LeftNavBar({
               placeholder="Search posts"
               className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
             />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <button
-              type="submit"
-              className="flex-1 rounded-full bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-white/85"
-            >
-              Search
-            </button>
-            <button
-              type="button"
-              onClick={onSearchClear}
-              className="rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Clear
-            </button>
+            {searchInput ? (
+              <button
+                type="button"
+                onClick={onSearchClear}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/55 transition hover:bg-white/15 hover:text-white"
+                aria-label="Clear search"
+              >
+                <XIcon />
+              </button>
+            ) : null}
           </div>
         </form>
       }
