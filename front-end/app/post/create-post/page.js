@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -35,6 +34,16 @@ function parseHashtags(input) {
     .filter((item) => item.startsWith("#") && item.length > 1)
     .map((item) => item.replace(/^#+/, ""))
     .filter(Boolean);
+}
+
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <rect x="4" y="5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m8 14 2.8-2.8a1 1 0 0 1 1.4 0L16 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="15.5" cy="9.5" r="1.3" fill="currentColor" />
+    </svg>
+  );
 }
 
 export default function CreatePostPage() {
@@ -179,23 +188,11 @@ export default function CreatePostPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#111111] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/45">
-              Social Network
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              Create post
-            </h1>
-          </div>
-
-          <Link
-            href="/posts"
-            className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            Back to posts
-          </Link>
+      <div className="mx-auto w-full max-w-3xl border border-white/10 bg-[#111111] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-white">
+            Create Post
+          </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-4">
@@ -217,14 +214,31 @@ export default function CreatePostPage() {
             <label htmlFor="content" className="mb-2 block text-sm font-medium text-white/75">
               Content
             </label>
-            <textarea
-              id="content"
-              value={form.content}
-              onChange={(event) => updateField("content", event.target.value)}
-              rows={5}
-              className="min-h-[140px] max-h-[260px] w-full resize-y overflow-y-auto rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-white/30 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              required
-            />
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 transition focus-within:border-white/30">
+              <textarea
+                id="content"
+                value={form.content}
+                onChange={(event) => updateField("content", event.target.value)}
+                rows={6}
+                className="min-h-[150px] max-h-[280px] w-full resize-y overflow-y-auto bg-transparent text-white outline-none placeholder:text-white/30 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                required
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+                <label className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Add image" title="Add image">
+                  <ImageIcon />
+                  <input
+                    id="image"
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif"
+                    onChange={(event) => updateField("image", event.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+                <p className="min-w-0 flex-1 truncate text-right text-sm text-white/50">
+                  {form.image?.name || "PNG, JPG, or GIF"}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -330,7 +344,7 @@ export default function CreatePostPage() {
                   : followers;
 
                 if (visible.length === 0) {
-                  return <p className="py-4 text-center text-sm text-white/40">No followers match "{followerSearch}"</p>;
+                  return <p className="py-4 text-center text-sm text-white/40">No followers match &quot;{followerSearch}&quot;</p>;
                 }
 
                 return (
@@ -376,29 +390,6 @@ export default function CreatePostPage() {
               })()}
             </div>
           ) : null}
-
-          <div>
-            <label htmlFor="image" className="mb-2 block text-sm font-medium text-white/75">
-              Post image
-            </label>
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-white/20 px-5 py-4 text-sm font-medium text-white transition hover:border-white/40 hover:bg-white/5">
-                  <input
-                    id="image"
-                    type="file"
-                    accept="image/png,image/jpeg,image/gif"
-                    onChange={(event) => updateField("image", event.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                  Choose image
-                </label>
-                <p className="min-h-6 text-sm text-white/50">
-                  {form.image?.name || "PNG, JPG, or GIF up to 20MB"}
-                </p>
-              </div>
-            </div>
-          </div>
 
           {errorMessage ? (
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">

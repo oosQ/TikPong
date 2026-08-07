@@ -567,7 +567,7 @@ export default function GroupsPage() {
               return urlGroupId;
             }
           }
-          return currentValue || combinedGroups[0]?.id || "";
+          return currentValue || "";
         });
 
         if (urlTab && !appliedUrlParamsRef.current) {
@@ -794,8 +794,8 @@ export default function GroupsPage() {
   }, [groups, searchInput]);
 
   useEffect(() => {
-    if (!filteredGroups.some((group) => group.id === selectedGroupId)) {
-      setSelectedGroupId(filteredGroups[0]?.id || "");
+    if (selectedGroupId && !filteredGroups.some((group) => group.id === selectedGroupId)) {
+      setSelectedGroupId("");
     }
   }, [filteredGroups, selectedGroupId]);
 
@@ -2245,8 +2245,8 @@ export default function GroupsPage() {
 
   return (
     <main className="h-dvh overflow-hidden bg-black px-0 py-0 text-white">
-      <div className={`grid h-dvh min-w-0 ${selectedGroup ? "grid-rows-[minmax(230px,42dvh)_minmax(0,1fr)]" : "grid-rows-1"} sm:grid-cols-[300px_minmax(0,1fr)] sm:grid-rows-1 2xl:grid-cols-[340px_minmax(0,1fr)]`}>
-        <aside className="flex min-h-0 min-w-0 flex-col border-b border-white/10 bg-[#090909] sm:border-b-0 sm:border-r sm:border-white/10">
+      <div className="grid h-dvh min-w-0 grid-cols-1 sm:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
+        <aside className={`${selectedGroup ? "hidden sm:flex" : "flex"} min-h-0 min-w-0 flex-col border-b border-white/10 bg-[#090909] sm:border-b-0 sm:border-r sm:border-white/10`}>
           <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-2xl font-semibold tracking-tight text-white">Groups</p>
@@ -2376,6 +2376,16 @@ export default function GroupsPage() {
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-6">
                     <div className="flex min-w-0 flex-1 items-start gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGroupId("")}
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white sm:hidden"
+                        aria-label="Back to groups"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+                          <path d="M14.5 6.5 9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
                       <GroupAvatar avatarPath={headerAvatar} label={headerTitle} sizeClassName="h-12 w-12 text-sm" />
                       <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
                         <p className="text-lg font-semibold leading-none text-white">{headerTitle}</p>

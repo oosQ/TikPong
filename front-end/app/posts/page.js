@@ -36,6 +36,16 @@ function renderUserAvatar(avatarPath, label, sizeClassName) {
   );
 }
 
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <rect x="4" y="5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m8 14 2.8-2.8a1 1 0 0 1 1.4 0L16 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="15.5" cy="9.5" r="1.3" fill="currentColor" />
+    </svg>
+  );
+}
+
 async function parseResponse(response) {
   const text = await response.text();
   if (!text) {
@@ -175,6 +185,8 @@ export default function PostsPage() {
 
   useEffect(() => {
     setSelectedExplorePostId("");
+    setActiveCommentsPostId("");
+    setCommentsErrorMessage("");
   }, [feedRequestKey]);
 
   useEffect(() => {
@@ -1095,7 +1107,7 @@ export default function PostsPage() {
           onClick={() => setActiveCommentsPostId("")}
           className="fixed inset-0 z-30 bg-black/45 max-[1279px]:block xl:hidden"
         />
-        <aside className="fixed right-0 top-0 z-40 flex h-screen w-full max-w-[420px] flex-col border-l border-white/10 bg-black/95 backdrop-blur xl:max-w-[420px]">
+        <aside className="fixed right-0 top-0 z-[60] flex h-screen w-full max-w-[420px] flex-col border-l border-white/10 bg-black/95 backdrop-blur xl:max-w-[420px]">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div>
               <p className="text-lg font-semibold text-white">Comments</p>
@@ -1225,7 +1237,8 @@ export default function PostsPage() {
                       </button>
                     </div>
                   ) : null}
-                  <textarea
+                  <input
+                    type="text"
                     value={commentDraft}
                     onChange={(event) =>
                       setCommentDraftByPostId((current) => ({
@@ -1234,12 +1247,17 @@ export default function PostsPage() {
                       }))
                     }
                     placeholder="Write a comment"
-                    rows={3}
-                    className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleCreateComment();
+                      }
+                    }}
+                    className="h-10 w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
                   />
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white">
-                      <span>Image</span>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <label className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Add image" title="Add image">
+                      <ImageIcon />
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/gif"
@@ -1308,7 +1326,7 @@ export default function PostsPage() {
         ) : (
           <div className="mx-auto flex max-w-5xl flex-col gap-0">
             {isExploreMode ? (
-              <div className="sticky top-[57px] z-10 flex justify-center py-3">
+              <div className="sticky top-[70px] z-10 flex justify-start px-2 py-3">
                 <button
                   type="button"
                   onClick={() => setSelectedExplorePostId("")}

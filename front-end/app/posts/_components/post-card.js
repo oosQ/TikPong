@@ -147,15 +147,6 @@ function CommentIcon() {
   );
 }
 
-function EyeIcon() {
-  return (
-    <FontAwesomeSvgIcon
-      title="Views"
-      path="M256 32c-57.5 0-105.6 28.5-143.7 64.6C74.3 132.6 46.1 176.1 28.6 207.8c-9.4 17-9.4 37.4 0 54.4c17.5 31.7 45.7 75.2 83.7 111.2C150.4 409.5 198.5 438 256 438s105.6-28.5 143.7-64.6c38-36 66.2-79.5 83.7-111.2c9.4-17 9.4-37.4 0-54.4c-17.5-31.7-45.7-75.2-83.7-111.2C361.6 60.5 313.5 32 256 32zm0 320a96 96 0 1 1 0-192 96 96 0 1 1 0 192zm0-144a48 48 0 1 0 0 96 48 48 0 1 0 0-96z"
-    />
-  );
-}
-
 function RepostIcon() {
   return (
     <FontAwesomeSvgIcon
@@ -189,7 +180,7 @@ function PostOwnerMenu({
   const canEdit = isOwner && Boolean(onEditPost);
   const canDelete = isOwner && Boolean(onDeletePost);
   const canBlock = Boolean(currentUserId) && !isOwner && Boolean(onBlockUser);
-  const canShare = Boolean(currentUserId);
+  const canShare = false;
 
   useEffect(() => {
     return () => {
@@ -494,6 +485,13 @@ function PostActionRail({
   showFollowUserButton = false,
   isFollowUserPending = false,
 }) {
+  const [shareFeedback, setShareFeedback] = useState("");
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareRecipients, setShareRecipients] = useState([]);
+  const [isShareRecipientsLoading, setIsShareRecipientsLoading] = useState(false);
+  const [shareRecipientsError, setShareRecipientsError] = useState("");
+  const [sharingRecipientId, setSharingRecipientId] = useState("");
+
   if (mode === "none") {
     return null;
   }
@@ -502,14 +500,98 @@ function PostActionRail({
   const isLiked = Number(post.is_liked) === 1;
   const isReposted = Number(post.is_reposted) === 1;
   const canShowFollowButton = isInteractive && showFollowUserButton && Number(post.is_following) !== 1;
-  const railTone = isInteractive && isLiked ? "bg-[#fe2c55] text-white" : "bg-white/10 text-white/75";
-  const repostTone = isInteractive && isReposted ? "bg-[#25f4ee] text-black" : "bg-white/10 text-white/75";
+  const inactiveActionTone = "border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur";
+  const railTone = isInteractive && isLiked ? "border border-[#fe2c55] bg-[#fe2c55] text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone;
+  const repostTone = isInteractive && isReposted ? "border border-[#25f4ee] bg-[#25f4ee] text-black shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone;
 
   function preventPointerFocus(event) {
     event.preventDefault();
   }
 
+  async function loadShareRecipients() {
+    setIsShareRecipientsLoading(true);
+    setShareRecipientsError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/following?limit=100`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to load following users");
+      }
+
+      setShareRecipients(payload?.data?.users || []);
+    } catch (error) {
+      setShareRecipients([]);
+      setShareRecipientsError(error.message || "Failed to load following users");
+    } finally {
+      setIsShareRecipientsLoading(false);
+    }
+  }
+
+  async function handleRailShare() {
+    setIsShareModalOpen(true);
+    setShareFeedback("");
+
+    if (!shareRecipients.length && !isShareRecipientsLoading) {
+      await loadShareRecipients();
+    }
+  }
+
+  function handleCloseShareModal() {
+    if (sharingRecipientId) {
+      return;
+    }
+
+    setIsShareModalOpen(false);
+    setShareRecipientsError("");
+  }
+
+  async function handleSendPostShare(recipient) {
+    if (!recipient?.user_id || !post?.id) {
+      return;
+    }
+
+    const shareUrl = buildPostShareUrl(post);
+    if (!shareUrl) {
+      setShareRecipientsError("Unable to build post link right now.");
+      return;
+    }
+
+    const messageContent = `Check out ${getSharePostLabel(post)}\n${shareUrl}`;
+    setSharingRecipientId(recipient.user_id);
+    setShareRecipientsError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/private/${recipient.user_id}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: messageContent }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to share post");
+      }
+
+      setIsShareModalOpen(false);
+      setShareFeedback("Shared");
+      window.setTimeout(() => setShareFeedback(""), 1800);
+    } catch (error) {
+      setShareRecipientsError(error.message || "Failed to share post");
+    } finally {
+      setSharingRecipientId("");
+    }
+  }
+
   return (
+    <>
     <div className={containerClassName}>
       <div className="shrink-0 self-center">
         <div className="relative">
@@ -539,7 +621,7 @@ function PostActionRail({
           ) : null}
         </div>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
+      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
         {isInteractive ? (
           <button
             type="button"
@@ -557,32 +639,38 @@ function PostActionRail({
         )}
         <span className="mt-2">{formatCount(post.total_likes)}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
+      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
         {isInteractive ? (
           <button
             type="button"
             onMouseDown={preventPointerFocus}
             onClick={() => onCommentsToggle?.(post)}
             className={`flex h-12 w-12 items-center justify-center rounded-full transition ${
-              isCommentsActive ? "bg-white text-black" : "bg-white/10 text-white/75"
+              isCommentsActive ? "border border-white bg-white text-black shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone
             }`}
           >
             <CommentIcon />
           </button>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur">
             <CommentIcon />
           </div>
         )}
         <span className="mt-2">{formatCount(post.total_comments)}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
-          <EyeIcon />
-        </div>
-        <span className="mt-2">{formatCount(post.total_views)}</span>
+      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+        <button
+          type="button"
+          onMouseDown={preventPointerFocus}
+          onClick={handleRailShare}
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur transition hover:bg-black/70"
+          aria-label="Share post"
+        >
+          <ShareIcon />
+        </button>
+        <span className="mt-2">{shareFeedback || "Share"}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs text-white/75">
+      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
         {isInteractive ? (
           <button
             type="button"
@@ -605,6 +693,74 @@ function PostActionRail({
         </div>
       ) : null}
     </div>
+    {isShareModalOpen ? (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+        onClick={handleCloseShareModal}
+      >
+        <section
+          className="w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/10 bg-[#121212] text-left shadow-[0_32px_80px_rgba(0,0,0,0.55)]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-5 sm:px-6">
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-semibold text-white">Share Post</h2>
+              <p className="mt-1 text-sm text-white/55">Send this post to someone you follow.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseShareModal}
+              disabled={Boolean(sharingRecipientId)}
+              className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="theme-scrollbar max-h-[60vh] overflow-y-auto px-5 py-4 sm:px-6">
+            {isShareRecipientsLoading ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
+                Loading following users...
+              </div>
+            ) : shareRecipientsError ? (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-5 text-sm text-red-200">
+                {shareRecipientsError}
+              </div>
+            ) : shareRecipients.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
+                You are not following anyone yet.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {shareRecipients.map((user) => (
+                  <div
+                    key={`rail-share-${post.id}-${user.user_id}`}
+                    className="flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition hover:bg-white/5"
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <PostAvatar avatarPath={user.avatar_path} label={user.nickname || user.user_id} sizeClassName="h-14 w-14" />
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-semibold text-white">{user.nickname || user.user_id}</p>
+                        <p className="truncate text-sm text-white/45">{[user.first_name, user.last_name].filter(Boolean).join(" ")}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSendPostShare(user)}
+                      disabled={Boolean(sharingRecipientId)}
+                      className="shrink-0 rounded-xl bg-[#fe2c55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {sharingRecipientId === user.user_id ? "Sharing..." : "Send"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    ) : null}
+    </>
   );
 }
 
@@ -653,33 +809,84 @@ function PostHashtags({ hashtags, mode, onHashtagClick, postId }) {
 
 function ExpandableContent({ content, textClassName }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element) {
+      return;
+    }
+
+    let frameId = 0;
+    function updateCanExpand() {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        setCanExpand(element.scrollHeight > element.clientHeight + 2);
+      });
+    }
+
+    updateCanExpand();
+    window.addEventListener("resize", updateCanExpand);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", updateCanExpand);
+    };
+  }, [content]);
 
   return (
-    <div className="group relative mt-6 w-full overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.05]">
+    <div className="group relative mt-5 w-full overflow-hidden text-left">
       <div
+        ref={contentRef}
         className={`transition-all duration-300 ${
           isExpanded ? "max-h-64 overflow-y-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "max-h-32 overflow-hidden"
         }`}
       >
         <p className={`select-text whitespace-pre-wrap break-all ${textClassName}`}>{content}</p>
       </div>
-      {!isExpanded ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#161616] to-transparent" />
+      {!isExpanded && canExpand ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#111] to-transparent" />
       ) : null}
-      <button
-        type="button"
-        onClick={() => setIsExpanded((current) => !current)}
-        className="mt-3 text-[11px] font-medium uppercase tracking-[0.2em] text-white/40"
-      >
-        {isExpanded ? "less" : "more"}
-      </button>
+      {canExpand ? (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="mt-3 text-[11px] font-medium uppercase tracking-[0.2em] text-white/45 transition hover:text-white"
+        >
+          {isExpanded ? "less" : "more"}
+        </button>
+      ) : null}
     </div>
   );
 }
 
 function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const textRef = useRef(null);
   const postDate = new Date(post.created_at).toLocaleDateString();
+
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) {
+      return;
+    }
+
+    let frameId = 0;
+    function updateCanExpand() {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        setCanExpand(element.scrollHeight > element.clientHeight + 2);
+      });
+    }
+
+    updateCanExpand();
+    window.addEventListener("resize", updateCanExpand);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", updateCanExpand);
+    };
+  }, [post.title, post.content]);
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-16 sm:p-6 sm:pt-24">
@@ -694,6 +901,7 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
           <span className="text-sm text-white/55">{postDate}</span>
         </div>
         <div
+          ref={textRef}
           className={`mt-3 transition-all duration-300 ${
             isExpanded ? "max-h-40 overflow-y-auto pr-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "max-h-14 overflow-hidden"
           }`}
@@ -709,15 +917,17 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
           onHashtagClick={onHashtagClick}
           postId={post.id}
         />
-        <div className="mt-2 flex items-center justify-end gap-4 text-sm text-white/75">
-          <button
-            type="button"
-            onClick={() => setIsExpanded((current) => !current)}
-            className="shrink-0 font-semibold text-white"
-          >
-            {isExpanded ? "less" : "more"}
-          </button>
-        </div>
+        {canExpand ? (
+          <div className="mt-2 flex items-center justify-end gap-4 text-sm text-white/75">
+            <button
+              type="button"
+              onClick={() => setIsExpanded((current) => !current)}
+              className="shrink-0 font-semibold text-white"
+            >
+              {isExpanded ? "less" : "more"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -728,7 +938,7 @@ function NoImageStage({ post, hashtagMode, onHashtagClick }) {
 
   return (
     <div className="flex h-full min-h-[100dvh] w-full items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(254,44,85,0.24),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(37,244,238,0.16),transparent_34%),#0b0b0b] px-5 py-20 text-left max-[1024px]:pr-28 sm:px-10">
-      <article className="relative mx-auto w-full max-w-[38rem] overflow-hidden rounded-[32px] border border-white/10 bg-[#111]/92 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.5)] sm:p-8">
+      <article className="relative mx-auto flex h-[calc(100dvh-10rem)] min-h-[520px] w-full max-w-[640px] flex-col justify-center overflow-hidden border border-white/10 bg-[#111]/92 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.5)] sm:p-8">
         <div className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <PostProfileLink
             userId={post.user_id}

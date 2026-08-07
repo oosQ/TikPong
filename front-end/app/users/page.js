@@ -29,13 +29,13 @@ function renderAvatar(avatarPath, label) {
       <img
         src={normalizeImagePath(normalizedPath)}
         alt={label}
-        className="h-16 w-16 rounded-2xl object-cover"
+        className="h-24 w-24 rounded-3xl object-cover"
       />
     );
   }
 
   return (
-    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-lg font-semibold text-black">
+    <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-2xl font-semibold text-black">
       {getInitial(label)}
     </div>
   );
@@ -111,6 +111,7 @@ export default function UsersPage() {
   const [pendingFollowUserIds, setPendingFollowUserIds] = useState([]);
   const [requestedUserIds, setRequestedUserIds] = useState([]);
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
+  const [isFloatingSearchFocused, setIsFloatingSearchFocused] = useState(false);
   const lastScrollYRef = useRef(0);
 
   useEffect(() => {
@@ -120,12 +121,12 @@ export default function UsersPage() {
   useEffect(() => {
     function handleScroll() {
       const currentScrollY = window.scrollY;
-      const isScrollingUp = currentScrollY < lastScrollYRef.current;
+      const isScrollingDown = currentScrollY > lastScrollYRef.current;
       const hasPassedHero = currentScrollY > 220;
 
-      if (hasPassedHero && isScrollingUp) {
+      if (hasPassedHero && isScrollingDown) {
         setShowFloatingSearch(true);
-      } else if (currentScrollY <= 120 || !isScrollingUp) {
+      } else if (!isFloatingSearchFocused && (currentScrollY <= 120 || !isScrollingDown)) {
         setShowFloatingSearch(false);
       }
 
@@ -134,11 +135,8 @@ export default function UsersPage() {
 
     lastScrollYRef.current = window.scrollY;
     window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isFloatingSearchFocused]);
 
   useEffect(() => {
     let ignore = false;
@@ -390,10 +388,8 @@ export default function UsersPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#171717_0%,#060606_48%,#020202_100%)] px-4 pb-16 pt-20 text-white min-[1200px]:pl-[288px] min-[1200px]:pr-8 min-[1200px]:pt-8">
       <div
-        className={`pointer-events-none fixed left-4 right-4 top-4 z-30 transition duration-300 min-[1200px]:left-[288px] min-[1200px]:right-8 ${
-          showFloatingSearch
-            ? "translate-y-0 opacity-100"
-            : "-translate-y-4 opacity-0"
+        className={`pointer-events-none fixed left-4 right-4 top-16 z-30 transition duration-300 min-[1200px]:left-[288px] min-[1200px]:right-8 min-[1200px]:top-4 ${
+          showFloatingSearch || isFloatingSearchFocused ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
         }`}
       >
         <div className="w-full max-w-7xl">
@@ -406,6 +402,11 @@ export default function UsersPage() {
                 type="text"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
+                onFocus={() => {
+                  setIsFloatingSearchFocused(true);
+                  setShowFloatingSearch(true);
+                }}
+                onBlur={() => setIsFloatingSearchFocused(false)}
                 placeholder="Search users by nickname or name"
                 className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
               />
@@ -480,7 +481,7 @@ export default function UsersPage() {
                 <Link
                   key={user.id}
                   href={`/users/${user.id}`}
-                  className="group relative flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.03] p-5 text-center transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+                  className="group relative flex min-w-0 flex-col items-center gap-4 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-5 text-center transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
                 >
                   {isPrivateAccount(user) ? (
                     <span
@@ -491,9 +492,11 @@ export default function UsersPage() {
                       <LockIcon />
                     </span>
                   ) : null}
-                  {renderAvatar(user.avatar_path, displayName)}
+                  <div className="flex h-24 w-full items-center justify-center">
+                    {renderAvatar(user.avatar_path, displayName)}
+                  </div>
 
-                  <div className="w-full overflow-hidden">
+                  <div className="w-full min-w-0 overflow-hidden px-1">
                     <div className="flex min-w-0 items-center justify-center gap-2">
                       <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
                     </div>
@@ -506,7 +509,7 @@ export default function UsersPage() {
                     type="button"
                     onClick={(event) => handleFollowAction(event, user)}
                     disabled={pendingFollowUserIds.includes(user.id)}
-                    className={`w-full rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                    className={`w-full max-w-full rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
                       requestedUserIds.includes(user.id)
                         ? "border border-white/15 bg-white/[0.06] text-white/80 hover:bg-white/[0.1]"
                         : Number(user.is_following) === 1

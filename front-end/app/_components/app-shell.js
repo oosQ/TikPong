@@ -85,19 +85,6 @@ function MessageIcon() {
   );
 }
 
-function UserIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <path
-        d="M17.5 19a5.5 5.5 0 0 0-11 0M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function UsersIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
@@ -283,9 +270,10 @@ function LeftNavBar({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close navigation"
           >
-            Close
+            <XIcon />
           </button>
         </div>
       ) : null}
@@ -414,21 +402,7 @@ function LeftNavBar({
           href="/profile/me"
           label="Profile"
           description="Open your profile"
-          icon={
-            currentUser
-              ? renderSidebarAvatar(currentUser)
-              : (
-                <span
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
-                    isActivePath(pathname, "profile", activeQuery, sourceQuery, modeQuery)
-                      ? "bg-[#fe2c55] text-white"
-                      : "bg-white/[0.06] text-white/80"
-                  }`}
-                >
-                  <UserIcon />
-                </span>
-              )
-          }
+          icon={currentUser ? renderSidebarAvatar(currentUser) : renderSidebarAvatar(null)}
           pathname={pathname}
           itemKey="profile"
           activeQuery={activeQuery}
@@ -484,6 +458,7 @@ export default function AppShell({ children }) {
 
   const showNav = pathname && pathname !== "/" && !pathname.startsWith("/auth");
   const isMessagesRoute = pathname === "/messages";
+  const isPostsRoute = pathname === "/posts";
   const hidesFloatingNavButton = isMessagesRoute || pathname === "/notifications";
   const activeQuery = searchParams.get("q") ?? "";
   const sourceQuery = searchParams.get("source") ?? "";
@@ -670,7 +645,7 @@ export default function AppShell({ children }) {
         type="button"
         onClick={() => setIsNavOpen(true)}
         className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#161616]/92 text-white shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-[#202020] min-[1200px]:hidden ${
-          hidesFloatingNavButton ? "hidden" : "right-4 top-4"
+          hidesFloatingNavButton ? "hidden" : isPostsRoute ? "right-4 top-20" : "right-4 top-4"
         }`}
         aria-label="Open navigation"
       >

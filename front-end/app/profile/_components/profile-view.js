@@ -568,12 +568,6 @@ export default function ProfileView({
           <div>
             <p className="text-sm uppercase tracking-[0.22em] text-white/45">{titleLabel}</p>
           </div>
-          <Link
-            href="/posts"
-            className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            Back to posts
-          </Link>
         </div>
 
         {isLoading ? (
@@ -648,6 +642,18 @@ export default function ProfileView({
                     <span className="font-bold text-white">{formatCount(profile.total_posts)}</span>
                     <span className="ml-2 text-white/60">Posts</span>
                   </div>
+                  {showBlockedConnectionsTab && onOpenConnectionsModal ? (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => onOpenConnectionsModal("blocked")}
+                        className="transition hover:text-white/80"
+                      >
+                        <span className="font-bold text-white">List</span>
+                        <span className="ml-2 text-white/60">Blocked</span>
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
