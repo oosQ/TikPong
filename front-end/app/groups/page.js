@@ -1400,18 +1400,12 @@ export default function GroupsPage() {
     setGroupActionError("");
 
     try {
-      let nextSelectedGroupId = "";
-
       await getJson(`${API_BASE_URL}/api/groups/${selectedGroup.id}`, {
         method: "DELETE",
       });
 
       const deletedGroupId = selectedGroup.id;
-      setGroups((currentGroups) => {
-        const remainingGroups = currentGroups.filter((group) => group.id !== deletedGroupId);
-        nextSelectedGroupId = remainingGroups[0]?.id || "";
-        return remainingGroups;
-      });
+      setGroups((currentGroups) => currentGroups.filter((group) => group.id !== deletedGroupId));
       setJoinRequestStatusByGroupId((current) => {
         const next = { ...current };
         delete next[deletedGroupId];
@@ -1447,7 +1441,7 @@ export default function GroupsPage() {
         delete next[deletedGroupId];
         return next;
       });
-      setSelectedGroupId((currentSelectedGroupId) => (currentSelectedGroupId === deletedGroupId ? nextSelectedGroupId : currentSelectedGroupId));
+      setSelectedGroupId((currentSelectedGroupId) => (currentSelectedGroupId === deletedGroupId ? "" : currentSelectedGroupId));
       setActiveTab("members");
       setIsGroupMenuOpen(false);
     } catch (error) {
@@ -2238,140 +2232,149 @@ export default function GroupsPage() {
     return null;
   }
 
+  function renderGroupListPage() {
+    return (
+      <div className="flex w-full max-w-7xl flex-col gap-6">
+        <section className="rounded-[30px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenGeneralSidebar}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white min-[1200px]:hidden"
+                  aria-label="Open general navigation"
+                >
+                  <MenuIcon />
+                </button>
+                <div>
+                  <span className="text-[11px] uppercase tracking-[0.35em] text-white/40">Community</span>
+                  <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Groups</h1>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-3 lg:max-w-2xl lg:flex-row lg:items-center">
+              <div className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/30 px-4 py-3">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Search groups"
+                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateGroupError("");
+                  setIsCreateGroupOpen(true);
+                }}
+                className="shrink-0 rounded-full bg-[#fe2c55] px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#e0264b]"
+              >
+                Create Group
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {pageError ? (
+          <section className="rounded-[26px] border border-[#fe2c55]/30 bg-[#fe2c55]/10 px-5 py-4 text-sm text-[#ffd6df]">
+            {pageError}
+          </section>
+        ) : null}
+
+        {isPageLoading ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-48 animate-pulse rounded-[28px] border border-white/10 bg-white/[0.04]" />
+            ))}
+          </section>
+        ) : filteredGroups.length ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredGroups.map((group) => {
+              const groupMemberCount = getGroupMemberCount(group);
+              const joinRequestStatus = joinRequestStatusByGroupId[group.id] || (group.is_member ? "member" : "idle");
+              const isJoinRequestLoading = Boolean(joinRequestLoadingByGroupId[group.id]);
+              const joinRequestError = joinRequestErrorByGroupId[group.id] || "";
+              const joinRequestButtonLabel = isJoinRequestLoading
+                ? joinRequestStatus === "pending"
+                  ? "Cancelling..."
+                  : "Sending..."
+                : joinRequestStatus === "pending"
+                  ? "Requested"
+                  : "Join Request";
+
+              return (
+                <article
+                  key={group.id}
+                  className="group relative flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-5 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroupId(group.id);
+                      setActiveTab("members");
+                    }}
+                    className="flex min-w-0 flex-1 flex-col items-center gap-4 text-center"
+                  >
+                    <GroupAvatar avatarPath={group.group_avatar} label={group.title} sizeClassName="h-24 w-24 text-2xl" />
+                    <div className="w-full min-w-0">
+                      <h2 className="truncate text-base font-semibold text-white">{group.title}</h2>
+                      <p className="mt-2 line-clamp-3 min-h-[3.75rem] text-sm leading-5 text-white/50">
+                        {group.description || group.preview || "Browse this group"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${group.is_member ? "bg-[#fe2c55]/14 text-[#ffc1cf]" : "bg-white/[0.06] text-white/50"}`}>
+                        {group.is_member ? "Joined" : "Browse"}
+                      </span>
+                      {groupMemberCount !== null ? (
+                        <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                          {formatMemberCount(groupMemberCount)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+
+                  {!group.is_member ? (
+                    <div className="mt-5 border-t border-white/10 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => handleJoinRequestAction(group.id)}
+                        disabled={isJoinRequestLoading}
+                        className={`w-full rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition ${joinRequestStatus === "pending" ? "border border-white/12 bg-white/[0.05] text-white/78 hover:bg-white/[0.1]" : "bg-[#fe2c55] text-white hover:bg-[#e0264b]"} disabled:cursor-not-allowed disabled:opacity-60`}
+                      >
+                        {joinRequestButtonLabel}
+                      </button>
+                      {joinRequestError ? <p className="mt-3 text-center text-xs text-[#ff9db2]">{joinRequestError}</p> : null}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </section>
+        ) : (
+          <section className="rounded-[28px] border border-white/10 bg-white/[0.03] px-6 py-12 text-center">
+            <h2 className="text-xl font-semibold text-white">No groups found</h2>
+            <p className="mt-2 text-sm text-white/50">
+              {searchInput.trim() ? "Try a different search term." : "There are no groups to show yet."}
+            </p>
+          </section>
+        )}
+      </div>
+    );
+  }
+
   const headerTitle = selectedGroupDetails?.title || selectedGroup?.title || "Groups";
   const headerDescription = selectedGroupDetails?.description || selectedGroup?.description || "Browse your joined groups and community activity.";
   const headerAvatar = selectedGroupDetails?.group_avatar || selectedGroup?.group_avatar || "";
   const memberCount = getGroupMemberCount(selectedGroup);
 
   return (
-    <main className="h-dvh overflow-hidden bg-black px-0 py-0 text-white">
-      <div className="grid h-dvh min-w-0 grid-cols-1 sm:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className={`${selectedGroup ? "hidden sm:flex" : "flex"} min-h-0 min-w-0 flex-col border-b border-white/10 bg-[#090909] sm:border-b-0 sm:border-r sm:border-white/10`}>
-          <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-2xl font-semibold tracking-tight text-white">Groups</p>
-              <button
-                type="button"
-                onClick={handleOpenGeneralSidebar}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white sm:hidden"
-                aria-label="Open general navigation"
-              >
-                <MenuIcon />
-              </button>
-            </div>
-            <div className="mt-4 flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/45 transition focus-within:border-white/20 focus-within:text-white/70">
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search groups"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/28"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCreateGroupError("");
-                setIsCreateGroupOpen(true);
-              }}
-              className="mt-4 rounded-full bg-[#fe2c55] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-[#e0264b]"
-            >
-              Create Group
-            </button>
-          </div>
-
-          <div className="theme-scrollbar min-h-0 flex-1 overflow-y-auto">
-            {pageError ? (
-              <div className="px-5 py-5 text-sm text-[#ffd6df]">{pageError}</div>
-            ) : null}
-
-            {isPageLoading ? (
-              <div className="space-y-1 px-3 py-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={index} className="h-20 animate-pulse rounded-2xl bg-white/[0.04]" />
-                ))}
-              </div>
-            ) : filteredGroups.length ? (
-              <div>
-                {filteredGroups.map((group) => {
-                  const isActive = group.id === selectedGroupId;
-                  const groupMemberCount = getGroupMemberCount(group);
-                  const joinRequestStatus = joinRequestStatusByGroupId[group.id] || (group.is_member ? "member" : "idle");
-                  const isJoinRequestLoading = Boolean(joinRequestLoadingByGroupId[group.id]);
-                  const joinRequestError = joinRequestErrorByGroupId[group.id] || "";
-                  const joinRequestButtonLabel = isJoinRequestLoading
-                    ? joinRequestStatus === "pending"
-                      ? "Cancelling..."
-                      : "Sending..."
-                    : joinRequestStatus === "pending"
-                      ? "Requested"
-                      : "Join Request";
-
-                  return (
-                    <div
-                      key={group.id}
-                      className={`border-b border-white/6 px-4 py-4 transition sm:px-5 ${isActive ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedGroupId(group.id);
-                          setActiveTab("members");
-                        }}
-                        className="w-full text-left"
-                      >
-                        <div className="flex items-start gap-3">
-                        <GroupAvatar avatarPath={group.group_avatar} label={group.title} sizeClassName="h-10 w-10 text-xs" />
-                        <div className="min-w-0 flex-1 pr-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="truncate text-sm font-semibold text-white">{group.title}</p>
-                            <span className="shrink-0 text-[11px] text-white/30">{formatRelativeDate(group.last_activity)}</span>
-                          </div>
-                          <p className="truncate text-xs text-white/42">{group.preview}</p>
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${group.is_member ? "bg-[#fe2c55]/14 text-[#ffc1cf]" : "bg-white/[0.06] text-white/45"}`}>
-                              {group.is_member ? "Joined" : "Browse"}
-                            </span>
-                            {groupMemberCount !== null ? (
-                              <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">
-                                {formatMemberCount(groupMemberCount)}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                        </div>
-                      </button>
-
-                      {!group.is_member ? (
-                        <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
-                          <p className="text-xs text-white/38">
-                            {joinRequestStatus === "pending" ? "Request pending approval" : "Ask to join this community"}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => handleJoinRequestAction(group.id)}
-                            disabled={isJoinRequestLoading}
-                            className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition ${joinRequestStatus === "pending" ? "border border-white/12 bg-white/[0.05] text-white/78 hover:bg-white/[0.1]" : "bg-[#fe2c55] text-white hover:bg-[#e0264b]"} disabled:cursor-not-allowed disabled:opacity-60`}
-                          >
-                            {joinRequestButtonLabel}
-                          </button>
-                        </div>
-                      ) : null}
-
-                      {joinRequestError ? <p className="mt-3 text-xs text-[#ff9db2]">{joinRequestError}</p> : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="px-5 py-8 text-sm text-white/45">No groups found.</div>
-            )}
-          </div>
-        </aside>
-
-        <section className={`${selectedGroup ? "flex" : "hidden sm:flex"} min-h-0 min-w-0 flex-col overflow-hidden bg-black`}>
-          {selectedGroup ? (
-            <>
+    <main className={`${selectedGroup ? "h-dvh overflow-hidden" : "min-h-screen overflow-x-hidden"} bg-[radial-gradient(circle_at_top,#171717_0%,#060606_48%,#020202_100%)] text-white ${selectedGroup ? "px-0 py-0" : "px-4 pb-16 pt-20 min-[1200px]:pl-[288px] min-[1200px]:pr-8 min-[1200px]:pt-8"}`}>
+      {selectedGroup ? (
+        <section className="flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-black">
               <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-8 sm:py-6">
                 <div className="flex flex-col gap-6">
                   <div className="flex items-start justify-between gap-6">
@@ -2379,12 +2382,13 @@ export default function GroupsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedGroupId("")}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white sm:hidden"
+                        className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-white/78 transition hover:bg-white/10 hover:text-white"
                         aria-label="Back to groups"
                       >
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
                           <path d="M14.5 6.5 9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
+                        <span className="hidden min-[420px]:inline">Groups</span>
                       </button>
                       <GroupAvatar avatarPath={headerAvatar} label={headerTitle} sizeClassName="h-12 w-12 text-sm" />
                       <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
@@ -2396,9 +2400,11 @@ export default function GroupsPage() {
                     </div>
 
                     <div className="relative flex shrink-0 items-center gap-3 max-sm:hidden">
-                      <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 sm:block">
-                        {memberCount !== null ? `${formatMemberCount(memberCount)}  ${selectedGroup.is_member ? "• Member access" : "• Browse only"}` : selectedGroup.is_member ? "Member access" : "Browse only"}
-                      </div>
+                      {memberCount !== null || selectedGroup.is_member ? (
+                        <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 sm:block">
+                          {memberCount !== null ? `${formatMemberCount(memberCount)}${selectedGroup.is_member ? "  • Member access" : ""}` : "Member access"}
+                        </div>
+                      ) : null}
                       {isSelectedGroupCreator ? (
                         <div ref={groupMenuRef} className="relative">
                           <button
@@ -2452,14 +2458,10 @@ export default function GroupsPage() {
               </div>
 
               <div className={`min-h-0 flex-1 ${activeTab === "chat" || activeTab === "posts" ? "flex flex-col" : "overflow-y-auto px-6 py-6 sm:px-8"}`}>{renderTabPanel()}</div>
-            </>
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <MessageOutlineIcon />
-            </div>
-          )}
         </section>
-      </div>
+      ) : (
+        renderGroupListPage()
+      )}
 
       {isInviteModalOpen ? (
         <div

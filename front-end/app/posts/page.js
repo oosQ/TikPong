@@ -46,6 +46,23 @@ function ImageIcon() {
   );
 }
 
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <path d="m4 12 16-8-5 16-3-6-8-2Z" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m12 14 8-10" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <path d="M15 6 9 12l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 async function parseResponse(response) {
   const text = await response.text();
   if (!text) {
@@ -1107,7 +1124,7 @@ export default function PostsPage() {
           onClick={() => setActiveCommentsPostId("")}
           className="fixed inset-0 z-30 bg-black/45 max-[1279px]:block xl:hidden"
         />
-        <aside className="fixed right-0 top-0 z-[60] flex h-screen w-full max-w-[420px] flex-col border-l border-white/10 bg-black/95 backdrop-blur xl:max-w-[420px]">
+        <aside className="fixed right-0 top-0 z-[60] flex h-screen w-full max-w-[420px] flex-col border-l border-white/10 bg-[#101214]/95 backdrop-blur xl:max-w-[420px]">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div>
               <p className="text-lg font-semibold text-white">Comments</p>
@@ -1132,8 +1149,8 @@ export default function PostsPage() {
             ) : null}
 
             {isLoadingComments ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
-                Loading comments...
+              <div className="flex min-h-32 items-center justify-center">
+                <span className="loading-spinner" aria-label="Loading comments" />
               </div>
             ) : comments.length === 0 ? (
               <div className="flex min-h-full items-center justify-center px-4 text-center">
@@ -1275,9 +1292,10 @@ export default function PostsPage() {
                       type="button"
                       onClick={handleCreateComment}
                       disabled={isSubmittingComment}
-                      className="rounded-full bg-[#fe2c55] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fe2c55] text-white transition hover:bg-[#e0264b] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Send comment"
                     >
-                      {isSubmittingComment ? "Posting..." : "Post"}
+                      {isSubmittingComment ? <span className="loading-spinner loading-spinner-sm" /> : <SendIcon />}
                     </button>
                   </div>
                 </div>
@@ -1312,8 +1330,8 @@ export default function PostsPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-sm text-white/55 shadow-sm">
-            Loading posts...
+          <div className="flex min-h-[82vh] items-center justify-center">
+            <span className="loading-spinner" aria-label="Loading posts" />
           </div>
         ) : posts.length === 0 ? (
           <div className="flex min-h-[82vh] items-end justify-center pb-24">
@@ -1330,9 +1348,10 @@ export default function PostsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedExplorePostId("")}
-                  className="rounded-full border border-white/10 bg-black/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70 backdrop-blur transition hover:bg-white/10 hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/80 text-white/70 backdrop-blur transition hover:bg-white/10 hover:text-white"
+                  aria-label="Back to explore"
                 >
-                  Back to explore
+                  <BackIcon />
                 </button>
               </div>
             ) : null}
@@ -1368,8 +1387,8 @@ export default function PostsPage() {
         {!isLoading && (!isExploreMode || selectedExplorePostId) ? (
           <div ref={loadMoreRef} className="mt-10 flex snap-none justify-center pb-8">
             {isLoadingMore ? (
-              <div className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-white/65">
-                Loading more posts...
+              <div className="flex px-5 py-3">
+                <span className="loading-spinner loading-spinner-sm" aria-label="Loading more posts" />
               </div>
             ) : nextCursor ? (
               <div className="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-white/45">

@@ -53,6 +53,20 @@ export function PostProfileLink({ userId, label, className }) {
   );
 }
 
+function getPostFullName(post) {
+  const fullName = [post?.first_name, post?.last_name].filter(Boolean).join(" ").trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
+  return post?.nickname || post?.user_id || "User";
+}
+
+function getPostHandle(post) {
+  return `@${post?.nickname || post?.user_id || "user"}`;
+}
+
 function buildPostShareUrl(post) {
   if (typeof window === "undefined") {
     return "";
@@ -117,6 +131,16 @@ function ShareIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
     </svg>
   );
 }
@@ -315,7 +339,7 @@ function PostOwnerMenu({
 
   return (
     <>
-      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-16 z-20 flex items-center gap-2">
+      <div ref={containerRef} className="pointer-events-auto absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-5 sm:top-5">
         {canShare ? (
           <button
             type="button"
@@ -334,10 +358,10 @@ function PostOwnerMenu({
           type="button"
           onClick={() => setIsOpen((current) => !current)}
           disabled={isLoading || isDeletePending || isBlockPending || Boolean(sharingRecipientId)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-lg text-white/80 backdrop-blur-sm transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/80 shadow-[0_12px_28px_rgba(0,0,0,0.35)] backdrop-blur-sm transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Open post actions"
         >
-          ...
+          <DotsIcon />
         </button>
         {isOpen ? (
         <div className="absolute right-0 top-12 min-w-[148px] rounded-2xl bg-[#151515] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
@@ -500,9 +524,9 @@ function PostActionRail({
   const isLiked = Number(post.is_liked) === 1;
   const isReposted = Number(post.is_reposted) === 1;
   const canShowFollowButton = isInteractive && showFollowUserButton && Number(post.is_following) !== 1;
-  const inactiveActionTone = "border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur";
-  const railTone = isInteractive && isLiked ? "border border-[#fe2c55] bg-[#fe2c55] text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone;
-  const repostTone = isInteractive && isReposted ? "border border-[#25f4ee] bg-[#25f4ee] text-black shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone;
+  const inactiveActionTone = "text-white";
+  const railTone = isInteractive && isLiked ? "scale-110 text-[#fe2c55]" : inactiveActionTone;
+  const repostTone = isInteractive && isReposted ? "scale-110 text-[#25f4ee]" : inactiveActionTone;
 
   function preventPointerFocus(event) {
     event.preventDefault();
@@ -603,7 +627,7 @@ function PostActionRail({
             <PostAvatar
               avatarPath={post.avatar_path}
               label={post.nickname || post.user_id}
-              sizeClassName="h-12 w-12"
+              sizeClassName="h-10 w-10 sm:h-12 sm:w-12"
             />
           </Link>
           {canShowFollowButton ? (
@@ -621,68 +645,68 @@ function PostActionRail({
           ) : null}
         </div>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+      <div className="flex min-w-[40px] flex-col items-center text-center text-[11px] font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:min-w-[50px] sm:text-xs">
         {isInteractive ? (
           <button
             type="button"
             onMouseDown={preventPointerFocus}
             onClick={() => onLikeToggle?.(post)}
             disabled={isLikePending}
-            className={`flex h-12 w-12 items-center justify-center rounded-full ${railTone} transition disabled:cursor-not-allowed disabled:opacity-60`}
+            className={`flex h-11 w-11 items-center justify-center sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8 ${railTone} transition-all duration-200 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-80`}
           >
-            {isLikePending ? "..." : <HeartIcon />}
+            <HeartIcon />
           </button>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
+          <div className="flex h-11 w-11 items-center justify-center text-white/75 sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8">
             <HeartIcon />
           </div>
         )}
         <span className="mt-2">{formatCount(post.total_likes)}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+      <div className="flex min-w-[40px] flex-col items-center text-center text-[11px] font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:min-w-[50px] sm:text-xs">
         {isInteractive ? (
           <button
             type="button"
             onMouseDown={preventPointerFocus}
             onClick={() => onCommentsToggle?.(post)}
-            className={`flex h-12 w-12 items-center justify-center rounded-full transition ${
-              isCommentsActive ? "border border-white bg-white text-black shadow-[0_10px_28px_rgba(0,0,0,0.42)]" : inactiveActionTone
+            className={`flex h-11 w-11 items-center justify-center transition-all duration-200 ease-out active:scale-95 sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8 ${
+              isCommentsActive ? "scale-110 text-white" : inactiveActionTone
             }`}
           >
             <CommentIcon />
           </button>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur">
+          <div className="flex h-11 w-11 items-center justify-center text-white/86 sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8">
             <CommentIcon />
           </div>
         )}
         <span className="mt-2">{formatCount(post.total_comments)}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+      <div className="flex min-w-[40px] flex-col items-center text-center text-[11px] font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:min-w-[50px] sm:text-xs">
         <button
           type="button"
           onMouseDown={preventPointerFocus}
           onClick={handleRailShare}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-[0_10px_28px_rgba(0,0,0,0.42)] backdrop-blur transition hover:bg-black/70"
+          className="flex h-11 w-11 items-center justify-center text-white transition hover:text-white active:scale-95 sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8"
           aria-label="Share post"
         >
           <ShareIcon />
         </button>
         <span className="mt-2">{shareFeedback || "Share"}</span>
       </div>
-      <div className="flex min-w-[52px] flex-col items-center text-center text-xs font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+      <div className="flex min-w-[40px] flex-col items-center text-center text-[11px] font-semibold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] sm:min-w-[50px] sm:text-xs">
         {isInteractive ? (
           <button
             type="button"
             onMouseDown={preventPointerFocus}
             onClick={() => onRepostToggle?.(post)}
             disabled={isRepostPending}
-            className={`flex h-12 w-12 items-center justify-center rounded-full ${repostTone} transition disabled:cursor-not-allowed disabled:opacity-60`}
+            className={`flex h-11 w-11 items-center justify-center sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8 ${repostTone} transition-all duration-200 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-80`}
           >
-            {isRepostPending ? "..." : <RepostIcon />}
+            <RepostIcon />
           </button>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white/75">
+          <div className="flex h-11 w-11 items-center justify-center text-white/75 sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8">
             <RepostIcon />
           </div>
         )}
@@ -778,7 +802,7 @@ function PostHashtags({ hashtags, mode, onHashtagClick, postId }) {
               type="button"
               onClick={() => onHashtagClick?.(hashtag)}
               key={`${postId}-${hashtag}`}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white transition hover:bg-white/20"
+              className="rounded-full bg-white/10 px-3 py-1 text-md font-medium text-white transition hover:bg-white/20"
             >
               #{hashtag}
             </button>
@@ -865,6 +889,8 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
   const [canExpand, setCanExpand] = useState(false);
   const textRef = useRef(null);
   const postDate = new Date(post.created_at).toLocaleDateString();
+  const fullName = getPostFullName(post);
+  const handle = getPostHandle(post);
 
   useEffect(() => {
     const element = textRef.current;
@@ -889,16 +915,19 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
   }, [post.title, post.content]);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-16 sm:p-6 sm:pt-24">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pr-24 pt-16 sm:p-6 sm:pr-28 sm:pt-24">
       <div className="pointer-events-auto w-full max-w-3xl text-left transition">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="min-w-0">
           <PostProfileLink
             userId={post.user_id}
-            label={post.nickname || post.user_id}
-            className="truncate text-xl font-semibold text-white transition hover:text-white/80 sm:text-2xl"
+            label={fullName}
+            className="block truncate text-2xl font-semibold text-white transition hover:text-white/80 sm:text-3xl"
           />
-          <span className="text-sm text-white/45">·</span>
-          <span className="text-sm text-white/55">{postDate}</span>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="truncate text-base font-medium text-white/70 sm:text-lg">{handle}</span>
+            <span className="text-sm text-white/45">·</span>
+            <span className="text-sm text-white/55">{postDate}</span>
+          </div>
         </div>
         <div
           ref={textRef}
@@ -935,26 +964,32 @@ function ImageOverlay({ post, hashtagMode, onHashtagClick }) {
 
 function NoImageStage({ post, hashtagMode, onHashtagClick }) {
   const postDate = new Date(post.created_at).toLocaleDateString();
+  const fullName = getPostFullName(post);
+  const handle = getPostHandle(post);
 
   return (
-    <div className="flex h-full min-h-[100dvh] w-full items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(254,44,85,0.24),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(37,244,238,0.16),transparent_34%),#0b0b0b] px-5 py-20 text-left max-[1024px]:pr-28 sm:px-10">
-      <article className="relative mx-auto flex h-[calc(100dvh-10rem)] min-h-[520px] w-full max-w-[640px] flex-col justify-center overflow-hidden border border-white/10 bg-[#111]/92 p-6 shadow-[0_28px_80px_rgba(0,0,0,0.5)] sm:p-8">
-        <div className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="flex w-full items-center justify-center px-4 py-8 pr-24 text-left sm:px-7 sm:py-12 sm:pr-28">
+      <div className="relative mx-auto flex min-h-[380px] w-full max-w-[720px] flex-col justify-center overflow-hidden p-4 sm:min-h-[430px] sm:p-8">
+        <div className="pointer-events-auto min-w-0">
           <PostProfileLink
             userId={post.user_id}
-            label={post.nickname || post.user_id}
-            className="truncate text-base font-semibold text-white transition hover:text-white/80"
+            label={fullName}
+            className="block truncate text-2xl font-semibold text-white transition hover:text-white/80 sm:text-3xl"
           />
-          <span className="text-sm text-white/35">·</span>
-          <span className="text-sm text-white/45">{postDate}</span>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="truncate text-base font-medium text-white/70 sm:text-lg">{handle}</span>
+            <span className="text-sm text-white/35">·</span>
+            <span className="text-sm text-white/45">{postDate}</span>
+          </div>
         </div>
+        <div className="my-5 h-px w-full bg-white/20" />
         {post.title ? (
-          <h2 className="mt-6 break-words text-3xl font-semibold leading-tight text-white sm:text-4xl">
+          <h2 className="mt-5 break-words text-3xl font-semibold leading-tight text-white sm:text-4xl">
             {post.title}
           </h2>
         ) : null}
         {post.content ? (
-          <ExpandableContent content={post.content} textClassName="text-base leading-8 text-white/78" />
+          <ExpandableContent content={post.content} textClassName="text-xl leading-9 text-white/82 sm:text-2xl sm:leading-10" />
         ) : null}
         <div className="mt-5 flex justify-start">
           <PostHashtags
@@ -964,7 +999,7 @@ function NoImageStage({ post, hashtagMode, onHashtagClick }) {
             postId={post.id}
           />
         </div>
-      </article>
+      </div>
     </div>
   );
 }
@@ -993,17 +1028,20 @@ export function FeedPostCard({
   activeCommentsPostId = "",
   showFollowUserButton = false,
 }) {
+  const [failedImageKey, setFailedImageKey] = useState("");
   const showRails = actionRailMode !== "none";
+  const imageKey = `${post.id || ""}:${post.image_path || ""}`;
+  const hasImage = Boolean(post.image_path) && failedImageKey !== imageKey;
   const resolvedArticleClassName =
     articleClassName ||
     (showRails
-      ? "mx-auto grid min-h-[100dvh] w-full max-w-4xl snap-start content-center gap-4 py-0 lg:grid-cols-[minmax(0,640px)_110px]"
+      ? "mx-auto flex min-h-[100dvh] w-full max-w-[900px] snap-start items-stretch justify-center px-0 py-0 sm:min-h-[calc(100dvh-2rem)] sm:items-center sm:px-0 sm:py-6"
       : "mx-auto w-full max-w-4xl py-2");
 
   return (
     <article className={resolvedArticleClassName} {...articleProps}>
-      <div className="overflow-hidden bg-[#101010] shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
-        <div className="relative flex min-h-[100dvh] items-center justify-center bg-black">
+      <div className="relative flex w-full overflow-hidden bg-[#14161a] shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+        <div className={`relative flex min-w-0 flex-1 items-center justify-center bg-[#14161a] ${hasImage ? "min-h-[100dvh] sm:min-h-0" : "min-h-[100dvh] sm:min-h-[430px]"}`}>
           <PostOwnerMenu
             post={post}
             currentUserId={currentUserId}
@@ -1014,12 +1052,13 @@ export function FeedPostCard({
             isDeletePending={isDeletePending}
             isBlockPending={isBlockPending}
           />
-          {post.image_path ? (
+          {hasImage ? (
             <>
               <img
                 src={normalizeImagePath(post.image_path)}
                 alt={post.title}
-                className="h-[100dvh] w-full object-contain"
+                onError={() => setFailedImageKey(imageKey)}
+                className="h-full max-h-[100dvh] w-full object-contain sm:h-auto sm:max-h-[82dvh]"
               />
               <ImageOverlay post={post} hashtagMode={hashtagMode} onHashtagClick={onHashtagClick} />
             </>
@@ -1027,41 +1066,24 @@ export function FeedPostCard({
             <NoImageStage post={post} hashtagMode={hashtagMode} onHashtagClick={onHashtagClick} />
           )}
 
-          {showRails ? (
-            <PostActionRail
-              post={post}
-              mode={actionRailMode}
-              isLikePending={isLikePending}
-              isRepostPending={isRepostPending}
-              isCommentsActive={activeCommentsPostId === post.id}
-              onLikeToggle={onLikeToggle}
-              onRepostToggle={onRepostToggle}
-              onCommentsToggle={onCommentsToggle}
-              onFollowUser={onFollowUser}
-              showFollowUserButton={showFollowUserButton}
-              isFollowUserPending={isFollowUserPending}
-              containerClassName="absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col items-center gap-4 px-2 py-4 max-[1024px]:flex"
-            />
-          ) : null}
         </div>
+        {showRails ? (
+          <PostActionRail
+            post={post}
+            mode={actionRailMode}
+            isLikePending={isLikePending}
+            isRepostPending={isRepostPending}
+            isCommentsActive={activeCommentsPostId === post.id}
+            onLikeToggle={onLikeToggle}
+            onRepostToggle={onRepostToggle}
+            onCommentsToggle={onCommentsToggle}
+            onFollowUser={onFollowUser}
+            showFollowUserButton={showFollowUserButton}
+            isFollowUserPending={isFollowUserPending}
+            containerClassName="absolute bottom-5 right-3 z-40 flex min-w-0 flex-col items-center justify-end gap-3 px-1 py-2 max-[520px]:bottom-4 max-[520px]:right-2 max-[520px]:gap-2"
+          />
+        ) : null}
       </div>
-
-      {showRails ? (
-        <PostActionRail
-          post={post}
-          mode={actionRailMode}
-          isLikePending={isLikePending}
-          isRepostPending={isRepostPending}
-          isCommentsActive={activeCommentsPostId === post.id}
-          onLikeToggle={onLikeToggle}
-          onRepostToggle={onRepostToggle}
-          onCommentsToggle={onCommentsToggle}
-          onFollowUser={onFollowUser}
-          showFollowUserButton={showFollowUserButton}
-          isFollowUserPending={isFollowUserPending}
-          containerClassName="hidden items-center justify-center gap-5 px-2 pb-2 min-[1025px]:flex lg:flex-col lg:justify-end lg:gap-4 lg:px-0 lg:pb-14"
-        />
-      ) : null}
     </article>
   );
 }

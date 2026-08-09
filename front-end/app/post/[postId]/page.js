@@ -14,6 +14,33 @@ import PostEditModal from "@/app/posts/_components/post-edit-modal";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8433";
 
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <path d="m4 12 16-8-5 16-3-6-8-2Z" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m12 14 8-10" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <rect x="4" y="5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m8 14 2.8-2.8a1 1 0 0 1 1.4 0L16 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="15.5" cy="9.5" r="1.3" fill="currentColor" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <path d="M15 6 9 12l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 async function parseResponse(response) {
   const text = await response.text();
   if (!text) {
@@ -970,8 +997,8 @@ export default function PostDetailsPage() {
             ) : null}
 
             {isLoadingComments ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
-                Loading comments...
+              <div className="flex min-h-32 items-center justify-center">
+                <span className="loading-spinner" aria-label="Loading comments" />
               </div>
             ) : comments.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-white/60">
@@ -1052,22 +1079,28 @@ export default function PostDetailsPage() {
 
           <div className="border-t border-white/10 p-5">
             {currentUser ? (
-              <div className="space-y-3">
-                <textarea
-                  value={commentDraft}
-                  onChange={(event) =>
-                    setCommentDraftByPostId((current) => ({
-                      ...current,
-                      [activeCommentsPostId]: event.target.value,
-                    }))
-                  }
-                  placeholder="Write a comment"
-                  rows={3}
-                  className="w-full resize-none rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/25"
-                />
-                <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/75">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-                    <span>Add image</span>
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-3 py-3 transition focus-within:border-white/25">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={commentDraft}
+                    onChange={(event) =>
+                      setCommentDraftByPostId((current) => ({
+                        ...current,
+                        [activeCommentsPostId]: event.target.value,
+                      }))
+                    }
+                    placeholder="Write a comment"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleCreateComment();
+                      }
+                    }}
+                    className="h-11 min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                  <label className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Add image" title="Add image">
+                    <ImageIcon />
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/gif"
@@ -1081,6 +1114,17 @@ export default function PostDetailsPage() {
                       }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={handleCreateComment}
+                    disabled={isSubmittingComment}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#fe2c55] text-white transition hover:bg-[#e0264b] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="Send comment"
+                  >
+                    {isSubmittingComment ? <span className="loading-spinner loading-spinner-sm" /> : <SendIcon />}
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-sm text-white/75">
                   {selectedImage ? (
                     <div className="flex items-center gap-3">
                       <span className="max-w-[140px] truncate text-xs text-white/55">
@@ -1103,14 +1147,6 @@ export default function PostDetailsPage() {
                     <span className="text-xs text-white/40">PNG, JPG, GIF</span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCreateComment}
-                  disabled={isSubmittingComment}
-                  className="w-full rounded-full bg-[#fe2c55] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmittingComment ? "Posting..." : "Post comment"}
-                </button>
               </div>
             ) : (
               <button
@@ -1128,6 +1164,9 @@ export default function PostDetailsPage() {
   }
 
   const backLink = getBackLink();
+  const visibleCollectionPosts = profileCollection?.posts?.length
+    ? profileCollection.posts.filter((item) => item.id === postId)
+    : [];
 
   return (
     <main className="relative min-h-screen bg-black px-4 py-0 text-white sm:px-6 lg:px-8">
@@ -1139,33 +1178,35 @@ export default function PostDetailsPage() {
           </div>}
           <Link
             href={backLink.href}
-            className="pointer-events-auto rounded-full border border-white/15 bg-black/35 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white backdrop-blur-sm transition hover:bg-white/10"
+            aria-label={backLink.label}
           >
-            {backLink.label}
+            <BackIcon />
           </Link>
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center">
         {isLoading ? (
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 pt-32 text-center text-white/60">
-            Loading post...
+          <div className="flex min-h-screen items-center justify-center">
+            <span className="loading-spinner" aria-label="Loading post" />
           </div>
         ) : errorMessage ? (
           <div className="rounded-[32px] border border-red-500/30 bg-red-500/10 p-8 pt-32 text-center text-red-200">
             {errorMessage}
           </div>
-        ) : profileCollection?.posts?.length ? (
+        ) : visibleCollectionPosts.length ? (
           <div
             ref={collectionScrollRef}
-            className="max-h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex min-h-screen items-center justify-center overflow-hidden"
           >
-            <div className="mx-auto flex max-w-5xl flex-col gap-0 pr-1">
-              {profileCollection.posts.map((item) => (
+            <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-0">
+              {visibleCollectionPosts.map((item) => (
                 <FeedPostCard
                   key={item.id}
                   post={item}
                   articleProps={{ "data-collection-post-id": item.id }}
+                  articleClassName="mx-auto flex w-full max-w-[900px] items-center justify-center px-1 sm:px-0"
                   actionRailMode="interactive"
                   hashtagMode="span"
                   currentUserId={currentUser?.id || ""}
@@ -1192,6 +1233,7 @@ export default function PostDetailsPage() {
         ) : (
           <FeedPostCard
             post={post}
+            articleClassName="mx-auto flex w-full max-w-[900px] items-center justify-center px-1 sm:px-0"
             actionRailMode="interactive"
             hashtagMode="span"
             currentUserId={currentUser?.id || ""}

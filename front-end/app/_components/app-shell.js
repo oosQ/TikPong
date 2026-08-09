@@ -459,7 +459,7 @@ export default function AppShell({ children }) {
   const showNav = pathname && pathname !== "/" && !pathname.startsWith("/auth");
   const isMessagesRoute = pathname === "/messages";
   const isPostsRoute = pathname === "/posts";
-  const hidesFloatingNavButton = isMessagesRoute || pathname === "/notifications";
+  const hidesFloatingNavButton = isMessagesRoute || pathname === "/notifications" || pathname === "/groups";
   const activeQuery = searchParams.get("q") ?? "";
   const sourceQuery = searchParams.get("source") ?? "";
   const modeQuery = searchParams.get("mode") ?? "";
@@ -645,7 +645,7 @@ export default function AppShell({ children }) {
         type="button"
         onClick={() => setIsNavOpen(true)}
         className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#161616]/92 text-white shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-[#202020] min-[1200px]:hidden ${
-          hidesFloatingNavButton ? "hidden" : isPostsRoute ? "right-4 top-20" : "right-4 top-4"
+          hidesFloatingNavButton ? "hidden" : isPostsRoute ? "left-4 top-20" : "left-4 top-4"
         }`}
         aria-label="Open navigation"
       >

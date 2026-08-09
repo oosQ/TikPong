@@ -106,6 +106,16 @@ function ShareIcon() {
   );
 }
 
+function DotsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
+}
+
 function renderProfileAvatar(profile, avatarPreviewUrl, isSelf, onAvatarClick) {
   const avatar = avatarPreviewUrl || profile?.avatar_path;
   const content = avatar ? (
@@ -192,7 +202,7 @@ function PostTileOwnerMenu({
         className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-lg text-white/80 backdrop-blur-sm transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
         aria-label="Open post actions"
       >
-        ...
+        <DotsIcon />
       </button>
       {isOpen ? (
         <div className="absolute right-0 top-11 min-w-[148px] rounded-2xl bg-[#151515] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
@@ -571,8 +581,8 @@ export default function ProfileView({
         </div>
 
         {isLoading ? (
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
-            Loading profile...
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <span className="loading-spinner" aria-label="Loading profile" />
           </div>
         ) : errorMessage ? (
           <div className="rounded-[32px] border border-red-500/30 bg-red-500/10 p-8 text-center text-red-200">
@@ -642,18 +652,6 @@ export default function ProfileView({
                     <span className="font-bold text-white">{formatCount(profile.total_posts)}</span>
                     <span className="ml-2 text-white/60">Posts</span>
                   </div>
-                  {showBlockedConnectionsTab && onOpenConnectionsModal ? (
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => onOpenConnectionsModal("blocked")}
-                        className="transition hover:text-white/80"
-                      >
-                        <span className="font-bold text-white">List</span>
-                        <span className="ml-2 text-white/60">Blocked</span>
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -712,7 +710,7 @@ export default function ProfileView({
                         className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-lg text-white/80 backdrop-blur-sm transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label="Open profile actions"
                       >
-                        ...
+                        <DotsIcon />
                       </button>
                       {isProfileMenuOpen ? (
                         <div className="absolute right-0 top-12 min-w-[148px] rounded-2xl bg-[#151515] p-2 text-left shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
@@ -778,12 +776,21 @@ export default function ProfileView({
                     Liked
                   </button>
                 ) : null}
+                {showBlockedConnectionsTab && onOpenConnectionsModal ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenConnectionsModal("blocked")}
+                    className="px-2 py-3 text-white/35 transition hover:text-white/60"
+                  >
+                    Blocked
+                  </button>
+                ) : null}
               </div>
 
               <div className="mx-auto mt-4 max-w-5xl">
                 {isGridLoading ? (
-                  <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
-                    {activeTab === "liked" ? "Loading liked posts..." : activeTab === "reposts" ? "Loading reposts..." : "Loading posts..."}
+                  <div className="flex min-h-80 items-center justify-center">
+                    <span className="loading-spinner" aria-label="Loading posts" />
                   </div>
                 ) : gridErrorMessage ? (
                   <div className="rounded-[28px] border border-red-500/30 bg-red-500/10 p-10 text-center text-red-200">

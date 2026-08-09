@@ -179,16 +179,14 @@ export default function CreatePostPage() {
   if (isCheckingAuth) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white">
-        <div className="rounded-[32px] border border-white/10 bg-white/[0.03] px-6 py-5 text-sm text-white/60 shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
-          Checking authentication...
-        </div>
+        <span className="loading-spinner" aria-label="Checking authentication" />
       </main>
     );
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl border border-white/10 bg-[#111111] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:p-8">
+      <div className="mx-auto w-full max-w-3xl rounded-3xl border border-white/10 bg-[#111111] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight text-white">
             Create Post
@@ -250,7 +248,7 @@ export default function CreatePostPage() {
                 id="privacy"
                 value={form.privacy}
                 onChange={(event) => updateField("privacy", event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-white/30"
+                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 pr-11 text-white outline-none transition focus:border-white/30"
               >
                 <option value="public">Public</option>
                 <option value="almost_private">Almost private</option>
