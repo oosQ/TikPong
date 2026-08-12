@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import EmojiPicker from "emoji-picker-react";
 import { normalizeImagePath } from "@/app/posts/_components/post-card";
@@ -60,7 +61,9 @@ async function getJson(url, options = {}) {
   const payload = await parseResponse(response);
 
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.error || payload?.message || "Request failed");
+    const error = new Error(payload?.error || payload?.message || "Request failed");
+    error.status = response.status;
+    throw error;
   }
 
   return payload?.data ?? null;
@@ -150,6 +153,23 @@ function EmptyState({ title, description }) {
       <h3 className="text-xl font-semibold text-white">{title}</h3>
       <p className="mt-3 max-w-md text-sm leading-6 text-white/50">{description}</p>
     </div>
+  );
+}
+
+function LoginRequiredState({ title = "Log in to continue", description = "Sign in to access this area and see your social activity." }) {
+  return (
+    <section className="flex min-h-[52vh] items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-white/50">{description}</p>
+        <Link
+          href="/auth/login"
+          className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+        >
+          Log in
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -583,7 +603,8 @@ export default function GroupsPage() {
           setGroups([]);
           setJoinRequestStatusByGroupId({});
           setSelectedGroupId("");
-          setPageError(error.message || "Failed to load groups");
+          const isUnauthorized = error?.status === 401 || /unauthorized|login/i.test(error?.message || "");
+          setPageError(isUnauthorized ? "AUTH_REQUIRED" : error.message || "Failed to load groups");
         }
       } finally {
         if (!ignore) {
@@ -2278,13 +2299,18 @@ export default function GroupsPage() {
           </div>
         </section>
 
-        {pageError ? (
+        {pageError === "AUTH_REQUIRED" ? (
+          <LoginRequiredState
+            title="Log in to view groups"
+            description="Groups are available after you sign in. Log in to browse communities, join discussions, and manage your requests."
+          />
+        ) : pageError ? (
           <section className="rounded-[26px] border border-[#fe2c55]/30 bg-[#fe2c55]/10 px-5 py-4 text-sm text-[#ffd6df]">
             {pageError}
           </section>
         ) : null}
 
-        {isPageLoading ? (
+        {pageError ? null : isPageLoading ? (
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="h-48 animate-pulse rounded-[28px] border border-white/10 bg-white/[0.04]" />

@@ -63,6 +63,25 @@ function ClearIcon() {
   );
 }
 
+function LoginRequiredState() {
+  return (
+    <section className="flex min-h-[52vh] items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">Log in to browse users</h2>
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Sign in to discover people, search profiles, and send follow requests.
+        </p>
+        <Link
+          href="/auth/login"
+          className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+        >
+          Log in
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function getDisplayName(user) {
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
 
@@ -113,10 +132,34 @@ export default function UsersPage() {
   const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [isFloatingSearchFocused, setIsFloatingSearchFocused] = useState(false);
   const lastScrollYRef = useRef(0);
+  const pendingFollowUserIdsRef = useRef(new Set());
 
   useEffect(() => {
     setSearchInput(activeQuery);
   }, [activeQuery]);
+
+  useEffect(() => {
+    const trimmedQuery = searchInput.trim();
+
+    if (trimmedQuery === activeQuery.trim()) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams();
+
+      if (trimmedQuery) {
+        params.set("q", trimmedQuery);
+      }
+
+      const queryString = params.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeQuery, pathname, router, searchInput]);
 
   useEffect(() => {
     function handleScroll() {
@@ -161,7 +204,9 @@ export default function UsersPage() {
         const payload = await parseResponse(response);
 
         if (!response.ok || !payload?.success) {
-          throw new Error(payload?.error || "Failed to load users");
+          const error = new Error(payload?.error || "Failed to load users");
+          error.status = response.status;
+          throw error;
         }
 
         if (!ignore) {
@@ -172,7 +217,8 @@ export default function UsersPage() {
         if (!ignore) {
           setUsers([]);
           setNextCursor("");
-          setErrorMessage(error.message || "Failed to load users");
+          const isUnauthorized = error?.status === 401 || /unauthorized|login/i.test(error?.message || "");
+          setErrorMessage(isUnauthorized ? "AUTH_REQUIRED" : error.message || "Failed to load users");
         }
       } finally {
         if (!ignore) {
@@ -249,10 +295,11 @@ export default function UsersPage() {
       return;
     }
 
-    if (pendingFollowUserIds.includes(user.id)) {
+    if (pendingFollowUserIdsRef.current.has(user.id)) {
       return;
     }
 
+    pendingFollowUserIdsRef.current.add(user.id);
     setPendingFollowUserIds((currentIds) => [...currentIds, user.id]);
     setErrorMessage("");
 
@@ -346,6 +393,7 @@ export default function UsersPage() {
     } catch (error) {
       setErrorMessage(error.message || "Failed to update follow status");
     } finally {
+      pendingFollowUserIdsRef.current.delete(user.id);
       setPendingFollowUserIds((currentIds) => currentIds.filter((id) => id !== user.id));
     }
   }
@@ -356,7 +404,7 @@ export default function UsersPage() {
     }
 
     if (requestedUserIds.includes(user.id)) {
-      return "Requested";
+      return "Follow request pending";
     }
 
     if (Number(user.is_following) === 1) {
@@ -406,7 +454,12 @@ export default function UsersPage() {
                   setIsFloatingSearchFocused(true);
                   setShowFloatingSearch(true);
                 }}
-                onBlur={() => setIsFloatingSearchFocused(false)}
+                onBlur={() => {
+                  setIsFloatingSearchFocused(false);
+                  if (window.scrollY <= 120) {
+                    setShowFloatingSearch(false);
+                  }
+                }}
                 placeholder="Search users by nickname or name"
                 className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
               />
@@ -457,13 +510,15 @@ export default function UsersPage() {
           </div>
         </section>
 
-        {errorMessage ? (
+        {errorMessage === "AUTH_REQUIRED" ? (
+          <LoginRequiredState />
+        ) : errorMessage ? (
           <section className="rounded-[26px] border border-[#fe2c55]/30 bg-[#fe2c55]/10 px-5 py-4 text-sm text-[#ffd6df]">
             {errorMessage}
           </section>
         ) : null}
 
-        {isLoading ? (
+        {errorMessage ? null : isLoading ? (
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
@@ -500,7 +555,7 @@ export default function UsersPage() {
                     <div className="flex min-w-0 items-center justify-center gap-2">
                       <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
                     </div>
-                    {user.nickname && getDisplayName(user) !== user.nickname ? (
+                    {user.nickname ? (
                       <p className="truncate text-xs text-white/45">@{user.nickname}</p>
                     ) : null}
                   </div>
@@ -511,7 +566,7 @@ export default function UsersPage() {
                     disabled={pendingFollowUserIds.includes(user.id)}
                     className={`w-full max-w-full rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
                       requestedUserIds.includes(user.id)
-                        ? "border border-white/15 bg-white/[0.06] text-white/80 hover:bg-white/[0.1]"
+                        ? "border border-amber-300/35 bg-amber-300/12 text-amber-100 hover:bg-amber-300/18"
                         : Number(user.is_following) === 1
                           ? "border border-[#fe2c55]/35 bg-[#fe2c55]/12 text-white hover:bg-[#fe2c55]/18"
                           : "bg-[#fe2c55] text-white hover:bg-[#e0264b]"

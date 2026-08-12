@@ -37,6 +37,8 @@ type UserSearchResult struct {
 type UserListItem struct {
 	ID          string `json:"id"`
 	Nickname    string `json:"nickname"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
 	AvatarPath  string `json:"avatar_path"`
 	IsFollowing int    `json:"is_following"`
 	IsPublic    bool   `json:"is_public"`

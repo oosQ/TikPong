@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8433";
@@ -43,7 +44,9 @@ async function getJson(url, options = {}) {
   const payload = await parseResponse(response);
 
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.error || payload?.message || "Request failed");
+    const error = new Error(payload?.error || payload?.message || "Request failed");
+    error.status = response.status;
+    throw error;
   }
 
   return payload?.data ?? null;
@@ -106,6 +109,26 @@ function BellOutlineIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function LoginRequiredState() {
+  return (
+    <div className="flex min-h-[62vh] items-center justify-center px-5 py-16 sm:px-8">
+      <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <BellOutlineIcon />
+        <h2 className="mt-5 text-2xl font-semibold tracking-tight text-white">Log in to view notifications</h2>
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Notifications are tied to your account. Sign in to see messages, requests, and group updates.
+        </p>
+        <Link
+          href="/auth/login"
+          className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+        >
+          Log in
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -297,7 +320,8 @@ export default function NotificationsPage() {
         setNextCursor(data?.next_cursor || "");
         setUnreadCount(countData?.count ?? 0);
       } catch (error) {
-        setPageError(error instanceof Error ? error.message : "Failed to load notifications");
+        const isUnauthorized = error?.status === 401 || /unauthorized|login/i.test(error?.message || "");
+        setPageError(isUnauthorized ? "AUTH_REQUIRED" : error instanceof Error ? error.message : "Failed to load notifications");
       } finally {
         setIsLoading(false);
       }
@@ -307,6 +331,10 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
+    if (pageError === "AUTH_REQUIRED") {
+      return undefined;
+    }
+
     shouldReconnectRef.current = true;
 
     function clearReconnectTimeout() {
@@ -384,7 +412,7 @@ export default function NotificationsPage() {
         socketRef.current = null;
       }
     };
-  }, []);
+  }, [pageError]);
 
   async function handleLoadMore() {
     if (!nextCursor || isLoadingMore) {
@@ -527,6 +555,8 @@ export default function NotificationsPage() {
         <div className="theme-scrollbar min-h-0 flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="px-5 py-8 text-sm text-white/45 sm:px-8">Loading notifications...</div>
+          ) : pageError === "AUTH_REQUIRED" ? (
+            <LoginRequiredState />
           ) : pageError ? (
             <div className="px-5 py-8 sm:px-8">
               <div className="rounded-2xl border border-[#fe2c55]/30 bg-[#fe2c55]/10 px-4 py-3 text-sm text-[#ffd6df]">

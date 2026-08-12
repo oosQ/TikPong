@@ -194,6 +194,7 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 			u.first_name,
 			u.last_name,
 			COALESCE(u.avatar_path, ''),
+			COALESCE(u.status, 'offline'),
 			CASE
 				WHEN COALESCE(um.content, '') <> '' THEN um.content
 				WHEN COALESCE(um.image_path, '') <> '' THEN '[Image]'
@@ -236,6 +237,7 @@ func GetPrivateConversations(currentUserID, cursor string, limit int) (*dto.GetP
 			&item.FirstName,
 			&item.LastName,
 			&item.AvatarPath,
+			&item.Status,
 			&item.LastMessage,
 			&item.LastMessageAt,
 			&item.LastSenderID,
@@ -290,6 +292,7 @@ func GetPrivateConversationSummary(currentUserID, otherUserID string) (*dto.Priv
 			u.first_name,
 			u.last_name,
 			COALESCE(u.avatar_path, ''),
+			COALESCE(u.status, 'offline'),
 			CASE
 				WHEN COALESCE(pm.content, '') <> '' THEN pm.content
 				WHEN COALESCE(pm.image_path, '') <> '' THEN '[Image]'
@@ -326,6 +329,7 @@ func GetPrivateConversationSummary(currentUserID, otherUserID string) (*dto.Priv
 		&item.FirstName,
 		&item.LastName,
 		&item.AvatarPath,
+		&item.Status,
 		&item.LastMessage,
 		&item.LastMessageAt,
 		&item.LastSenderID,

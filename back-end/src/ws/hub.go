@@ -45,6 +45,36 @@ func (h *Hub) Unregister(userID string, client chan []byte) {
 	}
 }
 
+func (h *Hub) IsOnline(userID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	return len(h.clients[userID]) > 0
+}
+
+func (h *Hub) Broadcast(eventType string, payload any) {
+	h.mu.RLock()
+	clients := make([]chan []byte, 0)
+	for _, conns := range h.clients {
+		for client := range conns {
+			clients = append(clients, client)
+		}
+	}
+	h.mu.RUnlock()
+
+	msg, err := json.Marshal(envelope{Type: eventType, Data: payload})
+	if err != nil {
+		return
+	}
+
+	for _, client := range clients {
+		select {
+		case client <- msg:
+		default:
+		}
+	}
+}
+
 func (h *Hub) SendToUser(userID, eventType string, payload any) {
 	h.mu.RLock()
 	conns := h.clients[userID]

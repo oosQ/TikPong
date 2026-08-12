@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	chatrepo "social-network/src/app/chat/repo"
+	database "social-network/src/db"
 	"social-network/src/middleware"
 	"time"
 
@@ -63,13 +64,31 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	hub := GlobalHub()
 	client := make(chan []byte, 32)
 	hub.Register(user.ID, client)
-	defer hub.Unregister(user.ID, client)
+	setUserStatus(user.ID, "online")
+	hub.Broadcast("user:status", map[string]any{
+		"user_id": user.ID,
+		"status":  "online",
+	})
+	defer func() {
+		hub.Unregister(user.ID, client)
+		if !hub.IsOnline(user.ID) {
+			setUserStatus(user.ID, "offline")
+			hub.Broadcast("user:status", map[string]any{
+				"user_id": user.ID,
+				"status":  "offline",
+			})
+		}
+	}()
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
 	go readLoop(ctx, cancel, conn, user.ID)
 	writeLoop(ctx, conn, client)
+}
+
+func setUserStatus(userID, status string) {
+	_, _ = database.DB.Exec(`UPDATE users SET status = ?, updated_at = ? WHERE id = ?`, status, time.Now(), userID)
 }
 
 func readLoop(ctx context.Context, cancel context.CancelFunc, conn *websocket.Conn, userID string) {

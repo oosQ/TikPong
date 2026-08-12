@@ -45,6 +45,7 @@ type PrivateConversationResponse struct {
 	FirstName     string    `json:"first_name"`
 	LastName      string    `json:"last_name"`
 	AvatarPath    string    `json:"avatar_path"`
+	Status        string    `json:"status"`
 	LastMessage   string    `json:"last_message"`
 	LastMessageAt time.Time `json:"last_message_at"`
 	LastSenderID  string    `json:"last_sender_id"`

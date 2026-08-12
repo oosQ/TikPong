@@ -1,34 +1,26 @@
 package validator
+
 import (
 	"errors"
-	"strings"
 	"social-network/src/app/user/auth/dto"
-    "regexp"
-)
-var (
-    ErrNicknameOrEmailRequired  = errors.New("nickname_or_email is required")
-    ErrNicknameOrEmailInvalid   = errors.New("must be a valid email or nickname (3-30 chars)")
+	"strings"
 )
 
-var nicknameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,30}$`)
+var (
+	ErrNicknameOrEmailRequired = errors.New("nickname_or_email is required")
+	ErrLoginPasswordRequired   = errors.New("password is required")
+)
 
 func ValidateLogin(req dto.LoginRequest) error {
-    input := strings.TrimSpace(req.NicknameOrEmail)
-    
-    if input == "" {
-        return ErrNicknameOrEmailRequired
-    }
-    
-    isValidEmail := emailRegex.MatchString(strings.ToLower(input))
-    isValidNickname := nicknameRegex.MatchString(input)
-    
-    if !isValidEmail && !isValidNickname {
-        return ErrNicknameOrEmailInvalid
-    }
-    
-   	if err := ValidatePassword(req.Password); err != nil {
-		return err
+	input := strings.TrimSpace(req.NicknameOrEmail)
+
+	if input == "" {
+		return ErrNicknameOrEmailRequired
 	}
-    
-    return nil
+
+	if strings.TrimSpace(req.Password) == "" {
+		return ErrLoginPasswordRequired
+	}
+
+	return nil
 }

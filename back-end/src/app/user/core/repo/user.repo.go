@@ -153,7 +153,7 @@ func SearchUsers(currentUserID, query, cursor string, limit int) (*dto.SearchUse
 
 func GetUsers(currentUserID, cursor string, limit int) (*dto.GetUsersResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT u.id, u.nickname, COALESCE(u.avatar_path, ''), u.is_public,
+		SELECT u.id, u.nickname, u.first_name, u.last_name, COALESCE(u.avatar_path, ''), u.is_public,
 		       COALESCE(CASE WHEN f.follower_id IS NOT NULL THEN 1 ELSE 0 END, 0)
 		FROM users u
 		LEFT JOIN follows f ON f.follower_id = ? AND f.following_id = u.id
@@ -176,7 +176,7 @@ func GetUsers(currentUserID, cursor string, limit int) (*dto.GetUsersResponse, e
 	for rows.Next() {
 		var user dto.UserListItem
 		var isPublic int
-		if err := rows.Scan(&user.ID, &user.Nickname, &user.AvatarPath, &isPublic, &user.IsFollowing); err != nil {
+		if err := rows.Scan(&user.ID, &user.Nickname, &user.FirstName, &user.LastName, &user.AvatarPath, &isPublic, &user.IsFollowing); err != nil {
 			return nil, err
 		}
 		user.IsPublic = isPublic == 1

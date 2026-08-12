@@ -181,6 +181,10 @@ export default function UserProfilePage() {
   }
 
   async function handleFollowAction() {
+    if (isFollowActionLoading) {
+      return;
+    }
+
     if (!profile?.id) {
       return;
     }

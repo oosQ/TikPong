@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import EmojiPicker from "emoji-picker-react";
@@ -9,6 +10,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8
 const THREAD_LIMIT = 50;
 const MESSAGE_LIMIT = 20;
 const TYPING_HEARTBEAT_MS = 2000;
+const REMOTE_TYPING_TIMEOUT_MS = 5000;
 const MESSAGE_FETCH_THROTTLE_MS = 350;
 
 function parseDisplayName(thread) {
@@ -49,6 +51,7 @@ function mapConversationToThread(thread) {
     last_message_at: thread.last_message_at || "",
     last_sender_id: thread.last_sender_id || "",
     unreadCount: Number(thread.unread_count || 0),
+    status: thread.status || "offline",
   };
 }
 
@@ -328,7 +331,9 @@ async function getJson(url, options = {}) {
   const payload = parseResponse(await response.json().catch(() => null));
 
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.error || payload?.message || "Request failed");
+    const error = new Error(payload?.error || payload?.message || "Request failed");
+    error.status = response.status;
+    throw error;
   }
 
   return payload.data;
@@ -395,9 +400,9 @@ function MessageOutlineIcon() {
 function TypingIndicator() {
   return (
     <div className="flex items-center gap-1.5 text-black">
-      <span className="h-2.5 w-2.5 rounded-full bg-black/70 animate-pulse" />
-      <span className="h-2.5 w-2.5 rounded-full bg-black/55 animate-pulse [animation-delay:150ms]" />
-      <span className="h-2.5 w-2.5 rounded-full bg-black/40 animate-pulse [animation-delay:300ms]" />
+      <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black/70 [animation-delay:-300ms]" />
+      <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black/55 [animation-delay:-150ms]" />
+      <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black/40" />
     </div>
   );
 }
@@ -413,16 +418,29 @@ function getInitials(name) {
 
 function ThreadAvatar({ thread, size = "md" }) {
   const sizeClass = size === "lg" ? "h-11 w-11 text-sm" : "h-10 w-10 text-xs";
+  const statusClass = size === "lg" ? "h-3.5 w-3.5 border-[3px]" : "h-3 w-3 border-2";
   const imagePath = thread?.avatar_path ? normalizeImagePath(thread.avatar_path) : "";
+  const isOnline = String(thread?.status || "").toLowerCase() === "online";
+  const statusDot = isOnline ? (
+    <span className={`absolute bottom-0 right-0 rounded-full border-black bg-emerald-400 ${statusClass}`} aria-label="Online" />
+  ) : null;
 
   if (imagePath) {
-    return <img src={imagePath} alt={thread.name} className={`${sizeClass} shrink-0 rounded-full object-cover`} />;
+    return (
+      <span className="relative shrink-0">
+        <img src={imagePath} alt={thread.name} className={`${sizeClass} rounded-full object-cover`} />
+        {statusDot}
+      </span>
+    );
   }
 
   return (
-    <div className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-white/10 font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)]`}>
-      {getInitials(thread.name)}
-    </div>
+    <span className="relative shrink-0">
+      <span className={`flex ${sizeClass} items-center justify-center rounded-full bg-white/10 font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)]`}>
+        {getInitials(thread.name)}
+      </span>
+      {statusDot}
+    </span>
   );
 }
 
@@ -438,6 +456,7 @@ export default function MessagesPage() {
   const localTypingHeartbeatRef = useRef(null);
   const localTypingThreadRef = useRef("");
   const localTypingStateRef = useRef(false);
+  const draftMessageRef = useRef("");
   const remoteTypingTimeoutRef = useRef(null);
   const messagePaginationThrottleRef = useRef(0);
   const pendingPrependRef = useRef(null);
@@ -648,7 +667,7 @@ export default function MessagesPage() {
         return;
       }
 
-      if (!draftMessage.trim()) {
+      if (!draftMessageRef.current.trim()) {
         stopLocalTyping(threadId);
         return;
       }
@@ -676,6 +695,7 @@ export default function MessagesPage() {
 
   function handleDraftTyping(nextValue) {
     setDraftMessage(nextValue);
+    draftMessageRef.current = nextValue;
 
     const threadId = activeThreadIdRef.current;
     if (!threadId) {
@@ -990,11 +1010,11 @@ export default function MessagesPage() {
           return;
         }
 
-        const nextMessage = error instanceof Error ? error.message : "Failed to load messages";
-        setPageError(nextMessage);
-        if (/unauthorized|login/i.test(nextMessage)) {
-          router.push("/auth/login");
-        }
+        const isUnauthorized = error?.status === 401 || /unauthorized|login/i.test(error?.message || "");
+        setCurrentUserId("");
+        setThreads([]);
+        setActiveThreadId("");
+        setPageError(isUnauthorized ? "You need to log in to use messages." : error instanceof Error ? error.message : "Failed to load messages");
       } finally {
         if (!ignore) {
           setIsInboxLoading(false);
@@ -1130,6 +1150,20 @@ export default function MessagesPage() {
         return;
       }
 
+      if (payload.type === "user:status") {
+        const userId = payload.data?.user_id || "";
+        const status = payload.data?.status || "offline";
+        if (!userId) {
+          return;
+        }
+        setThreads((currentThreads) =>
+          currentThreads.map((thread) =>
+            thread.id === userId ? { ...thread, status } : thread
+          )
+        );
+        return;
+      }
+
       if (payload.type === "chat:private:typing") {
         if (payload.data?.sender_id !== activeThreadIdRef.current) {
           return;
@@ -1147,7 +1181,7 @@ export default function MessagesPage() {
         remoteTypingTimeoutRef.current = window.setTimeout(() => {
           remoteTypingTimeoutRef.current = null;
           setIsPeerTyping(false);
-        }, 3000);
+        }, REMOTE_TYPING_TIMEOUT_MS);
       }
     }
 
@@ -1243,7 +1277,8 @@ export default function MessagesPage() {
     }
 
       setDraftMessage("");
-    clearSelectedImage();
+      draftMessageRef.current = "";
+      clearSelectedImage();
 
       const [inboxData, threadData] = await Promise.all([
         getJson(`${API_BASE_URL}/api/chat/private/inbox?limit=${THREAD_LIMIT}`),
@@ -1306,7 +1341,15 @@ export default function MessagesPage() {
             ) : null}
             {!isInboxLoading && !filteredThreads.length ? (
               <div className="px-5 py-8 text-sm text-white/45">
-                {pageError || "No conversations found."}
+                <p>{pageError || "No conversations found."}</p>
+                {pageError ? (
+                  <Link
+                    href="/auth/login"
+                    className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+                  >
+                    Log in
+                  </Link>
+                ) : null}
               </div>
             ) : null}
             {filteredThreads.map((thread) => {
@@ -1364,9 +1407,6 @@ export default function MessagesPage() {
                     <p className="text-base font-semibold text-white">{activeThread.name}</p>
                     <p className="text-sm text-white/42">{isPeerTyping ? "Typing..." : activeThread.handle}</p>
                   </div>
-                </div>
-                <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 sm:block">
-                  Active now
                 </div>
               </header>
 
@@ -1527,7 +1567,6 @@ export default function MessagesPage() {
                     type="text"
                     value={draftMessage}
                     onChange={(event) => handleDraftTyping(event.target.value)}
-                    onBlur={() => stopLocalTyping(activeThread?.id || "")}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();

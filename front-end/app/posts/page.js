@@ -55,6 +55,25 @@ function SendIcon() {
   );
 }
 
+function LoginRequiredState() {
+  return (
+    <div className="flex min-h-[78vh] items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <h2 className="text-2xl font-semibold tracking-tight text-white">Log in to explore</h2>
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Sign in to explore posts, hashtags, and activity from the community.
+        </p>
+        <Link
+          href="/auth/login"
+          className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+        >
+          Log in
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function BackIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
@@ -86,6 +105,7 @@ export default function PostsPage() {
   const pendingViewTimeoutsRef = useRef(new Map());
   const viewedPostIdsRef = useRef(new Set());
   const commentVisibilityRatiosRef = useRef(new Map());
+  const pendingFollowUserIdsRef = useRef(new Set());
 
   const [currentUser, setCurrentUser] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -146,6 +166,11 @@ export default function PostsPage() {
 
     const payload = await parseResponse(response);
     if (!response.ok || !payload?.success) {
+      if (response.status === 401 && isExploreMode) {
+        const error = new Error("You need to log in to explore posts.");
+        error.status = response.status;
+        throw error;
+      }
       throw new Error(payload?.error || "Failed to load posts");
     }
 
@@ -282,7 +307,7 @@ export default function PostsPage() {
         if (!ignore) {
           setPosts([]);
           setNextCursor("");
-          setErrorMessage(error.message || "Failed to load posts");
+          setErrorMessage(error?.status === 401 && activeMode === "explore" ? "AUTH_REQUIRED" : error.message || "Failed to load posts");
         }
       } finally {
         if (!ignore) {
@@ -729,11 +754,12 @@ export default function PostsPage() {
       return;
     }
 
-    if (!post?.user_id || post.user_id === currentUser.id || pendingFollowUserIds.includes(post.user_id)) {
+    if (!post?.user_id || post.user_id === currentUser.id || pendingFollowUserIdsRef.current.has(post.user_id)) {
       return;
     }
 
     const userId = post.user_id;
+    pendingFollowUserIdsRef.current.add(userId);
     setPendingFollowUserIds((current) => [...current, userId]);
     setErrorMessage("");
 
@@ -761,6 +787,7 @@ export default function PostsPage() {
     } catch (error) {
       setErrorMessage(error.message || "Failed to follow user");
     } finally {
+      pendingFollowUserIdsRef.current.delete(userId);
       setPendingFollowUserIds((current) => current.filter((id) => id !== userId));
     }
   }
@@ -1323,13 +1350,23 @@ export default function PostsPage() {
       >
         <div className="mx-auto max-w-7xl px-4 py-0 xl:px-8">
         {renderExploreHashtags()}
-        {errorMessage ? (
-          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {errorMessage}
+        {errorMessage === "AUTH_REQUIRED" ? (
+          <LoginRequiredState />
+        ) : errorMessage ? (
+          <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 sm:flex-row sm:items-center sm:justify-between">
+            <span>{errorMessage}</span>
+            {isExploreMode && !currentUser ? (
+              <Link
+                href="/auth/login"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black transition hover:bg-white/90"
+              >
+                Log in
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
-        {isLoading ? (
+        {errorMessage ? null : isLoading ? (
           <div className="flex min-h-[82vh] items-center justify-center">
             <span className="loading-spinner" aria-label="Loading posts" />
           </div>

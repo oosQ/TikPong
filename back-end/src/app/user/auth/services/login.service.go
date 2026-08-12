@@ -13,12 +13,12 @@ func LoginUser(req dto.LoginRequest) (string, string, time.Time, error) {
 
 	user, err := repo.CheckUserCredentials(req.NicknameOrEmail)
 	if err != nil {
-		return "", "", time.Time{}, errors.New("invalid Nickname or Email")
+		return "", "", time.Time{}, errors.New("invalid credentials")
 	}
 
 	isPasswordValid := utils.CheckPasswordHash(req.Password, user.PasswordHash)
 	if !isPasswordValid {
-		return "", "", time.Time{}, errors.New("invalid password")
+		return "", "", time.Time{}, errors.New("invalid credentials")
 	}
 
 	sessionID, err := utils.GenerateSessionID()
