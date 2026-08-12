@@ -1,10 +1,11 @@
 package repo
 
 import (
-	"time"
-	database "social-network/src/db"
-	"social-network/src/app/group/core/dto"
 	"database/sql"
+	"time"
+
+	"social-network/src/app/group/core/dto"
+	database "social-network/src/db"
 )
 
 func CreateGroup(groupID, title, description, groupAvatar, creatorID string) (err error) {
@@ -37,14 +38,21 @@ func CreateGroup(groupID, title, description, groupAvatar, creatorID string) (er
 
 func GetGroups(cursor string, limit int) (*dto.BrowseGroupsResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT id, title, description, COALESCE(avatar_path, ''), creator_id, created_at
-		FROM groups
+		SELECT
+			g.id,
+			g.title,
+			g.description,
+			COALESCE(g.avatar_path, ''),
+			g.creator_id,
+			(SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) AS member_count,
+			g.created_at
+		FROM groups g
 		WHERE (
 			? = ''
-			OR created_at < (SELECT created_at FROM groups WHERE id = ?)
-			OR (created_at = (SELECT created_at FROM groups WHERE id = ?) AND id < ?)
+			OR g.created_at < (SELECT created_at FROM groups WHERE id = ?)
+			OR (g.created_at = (SELECT created_at FROM groups WHERE id = ?) AND g.id < ?)
 		)
-		ORDER BY created_at DESC, id DESC
+		ORDER BY g.created_at DESC, g.id DESC
 		LIMIT ?
 	`, cursor, cursor, cursor, cursor, limit+1)
 	if err != nil {
@@ -55,7 +63,7 @@ func GetGroups(cursor string, limit int) (*dto.BrowseGroupsResponse, error) {
 	items := make([]dto.GroupResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.GroupResponse
-		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.GroupAvatar, &item.CreatorID, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.GroupAvatar, &item.CreatorID, &item.MemberCount, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -115,7 +123,7 @@ func GetGroupDetails(groupID string) (dto.GetGroupDetailsResponse, error) {
 			return dto.GetGroupDetailsResponse{}, err
 		}
 	}
-   err = database.DB.QueryRow(`
+	err = database.DB.QueryRow(`
 		SELECT COUNT(*) FROM group_members WHERE group_id = ?
 	`, groupID).Scan(&details.MemberCount)
 	if err != nil {
@@ -123,4 +131,3 @@ func GetGroupDetails(groupID string) (dto.GetGroupDetailsResponse, error) {
 	}
 	return details, nil
 }
-

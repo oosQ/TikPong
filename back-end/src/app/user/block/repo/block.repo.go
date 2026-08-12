@@ -1,8 +1,8 @@
 package repo
 
 import (
-	database "social-network/src/db"
 	"social-network/src/app/user/block/dto"
+	database "social-network/src/db"
 	"time"
 )
 
@@ -95,7 +95,7 @@ func DeleteBlock(blockerID, blockedID string) error {
 
 func GetBlockedUsers(blockerID, cursor string, limit int) (*dto.GetBlockedUsersResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT ub.blocked_id, u.nickname, COALESCE(u.avatar_path, ''), ub.created_at
+		SELECT ub.blocked_id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.avatar_path, ''), ub.created_at
 		FROM user_blocks ub
 		JOIN users u ON u.id = ub.blocked_id
 		WHERE ub.blocker_id = ?
@@ -115,7 +115,7 @@ func GetBlockedUsers(blockerID, cursor string, limit int) (*dto.GetBlockedUsersR
 	blockedUsers := make([]dto.BlockedUserResponse, 0, limit+1)
 	for rows.Next() {
 		var item dto.BlockedUserResponse
-		if err := rows.Scan(&item.UserID, &item.Nickname, &item.AvatarPath, &item.BlockedAt); err != nil {
+		if err := rows.Scan(&item.UserID, &item.Nickname, &item.FirstName, &item.LastName, &item.AvatarPath, &item.BlockedAt); err != nil {
 			return nil, err
 		}
 		blockedUsers = append(blockedUsers, item)

@@ -3,10 +3,12 @@ package dto
 import "time"
 
 type BlockedUserResponse struct {
-	UserID    string    `json:"user_id"`
-	Nickname  string    `json:"nickname"`
-	AvatarPath string   `json:"avatar_path"`
-	BlockedAt time.Time `json:"blocked_at"`
+	UserID     string    `json:"user_id"`
+	Nickname   string    `json:"nickname"`
+	FirstName  string    `json:"first_name"`
+	LastName   string    `json:"last_name"`
+	AvatarPath string    `json:"avatar_path"`
+	BlockedAt  time.Time `json:"blocked_at"`
 }
 
 type GetBlockedUsersResponse struct {

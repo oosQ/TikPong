@@ -68,6 +68,38 @@ export default function UserProfilePage() {
     );
   }
 
+  async function fetchBlockedProfileFallback(targetUserId) {
+    const response = await fetch(`${API_BASE_URL}/api/blocks?limit=100`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const payload = await parseResponse(response);
+
+    if (!response.ok || !payload?.success) {
+      return null;
+    }
+
+    const blockedUser = (payload?.data?.users || []).find((user) => user?.user_id === targetUserId);
+    if (!blockedUser) {
+      return null;
+    }
+
+    return {
+      id: blockedUser.user_id,
+      nickname: blockedUser.nickname || "",
+      first_name: blockedUser.first_name || "",
+      last_name: blockedUser.last_name || "",
+      avatar_path: blockedUser.avatar_path || "",
+      about_me: "",
+      is_public: false,
+      is_following: 0,
+      is_blocked: true,
+      total_posts: 0,
+      total_followers: 0,
+      total_following: 0,
+    };
+  }
+
   async function fetchProfilePage() {
     if (!userId) {
       setErrorMessage("Missing user id");
@@ -106,16 +138,26 @@ export default function UserProfilePage() {
       const profilePayload = await parseResponse(profileResponse);
       const postsPayload = await parseResponse(postsResponse);
 
-      if (!postsResponse.ok || !postsPayload?.success) {
-        throw new Error(postsPayload?.error || "Failed to load user posts");
-      }
-
       if (!profileResponse.ok || !profilePayload?.success || !profilePayload?.data) {
         if (profileResponse.status === 401 && !nextCurrentUser) {
           throw new Error("Login first to view profile details");
         }
 
+        const blockedProfile = nextCurrentUser ? await fetchBlockedProfileFallback(userId) : null;
+        if (blockedProfile) {
+          setCurrentUser(nextCurrentUser);
+          setProfile(blockedProfile);
+          setPosts([]);
+          setHasPendingFollowRequest(false);
+          return;
+        }
+
         throw new Error(profilePayload?.error || "Failed to load user profile");
+      }
+
+      const isBlocked = Boolean(profilePayload.data.is_blocked);
+      if (!isBlocked && (!postsResponse.ok || !postsPayload?.success)) {
+        throw new Error(postsPayload?.error || "Failed to load user posts");
       }
 
       let nextHasPendingFollowRequest = false;
@@ -130,7 +172,7 @@ export default function UserProfilePage() {
 
       setCurrentUser(nextCurrentUser);
       setProfile(profilePayload.data);
-      setPosts(postsPayload?.data?.posts || []);
+      setPosts(isBlocked ? [] : postsPayload?.data?.posts || []);
       setHasPendingFollowRequest(nextHasPendingFollowRequest);
     } catch (error) {
       setCurrentUser(null);
@@ -278,6 +320,42 @@ export default function UserProfilePage() {
     }
   }
 
+  async function handleUnblockUser() {
+    if (!profile?.id) {
+      return;
+    }
+
+    if (!currentUser?.id) {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (isBlockActionLoading) {
+      return;
+    }
+
+    setIsBlockActionLoading(true);
+    setBlockActionError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/blocks/${profile.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const payload = await parseResponse(response);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to unblock user");
+      }
+
+      await fetchProfilePage();
+    } catch (error) {
+      setBlockActionError(error.message || "Failed to unblock user");
+    } finally {
+      setIsBlockActionLoading(false);
+    }
+  }
+
   async function fetchConnections(tab) {
     if (!userId) {
       return;
@@ -365,9 +443,9 @@ export default function UserProfilePage() {
     : profile?.is_public
       ? "Follow"
       : hasPendingFollowRequest
-        ? "Request sent"
+        ? "Follow request pending"
         : "Request follow";
-  const canMessage = Boolean(profile) && Number(profile?.is_following) === 1;
+  const canMessage = Boolean(profile) && !profile?.is_blocked && Number(profile?.is_following) === 1;
 
   function handleMessageClick() {
     if (!profile?.id) {
@@ -410,6 +488,7 @@ export default function UserProfilePage() {
       onFollowAction={handleFollowAction}
       onMessageClick={handleMessageClick}
       onBlockUser={handleBlockUser}
+      onUnblockUser={handleUnblockUser}
       canMessage={canMessage}
       isFollowActionLoading={isFollowActionLoading}
       followActionError={followActionError}
@@ -425,6 +504,7 @@ export default function UserProfilePage() {
       isConnectionsLoading={isConnectionsLoading}
       connectionsError={connectionsError}
       currentUserId={currentUser?.id || ""}
+      onBack={() => router.push("/users")}
     />
   );
 }

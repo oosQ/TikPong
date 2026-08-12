@@ -21,23 +21,29 @@ async function parseResponse(response) {
   }
 }
 
-function renderAvatar(avatarPath, label) {
+function UserAvatar({ avatarPath, label }) {
+  const [hasImageError, setHasImageError] = useState(false);
   const normalizedPath = avatarPath?.trim();
 
-  if (normalizedPath) {
+  if (normalizedPath && !hasImageError) {
     return (
-      <img
-        src={normalizeImagePath(normalizedPath)}
-        alt={label}
-        className="h-24 w-24 rounded-3xl object-cover"
-      />
+      <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+        <img
+          src={normalizeImagePath(normalizedPath)}
+          alt={label}
+          onError={() => setHasImageError(true)}
+          className="h-24 w-24 rounded-full border-4 border-black object-cover"
+        />
+      </span>
     );
   }
 
   return (
-    <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white text-2xl font-semibold text-black">
-      {getInitial(label)}
-    </div>
+    <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-black bg-white text-2xl font-semibold text-black">
+        {getInitial(label)}
+      </div>
+    </span>
   );
 }
 
@@ -83,7 +89,10 @@ function LoginRequiredState() {
 }
 
 function getDisplayName(user) {
-  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+  const fullName = [user?.first_name ?? user?.firstName, user?.last_name ?? user?.lastName]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
 
   if (fullName) {
     return fullName;
@@ -93,7 +102,22 @@ function getDisplayName(user) {
     return user.nickname;
   }
 
-  return "User";
+  return `User ${String(user?.id || "").replace(/-/g, "").slice(0, 6) || "profile"}`;
+}
+
+function getUserHandle(user) {
+  const nickname = String(user?.nickname || "").trim();
+  if (nickname) {
+    return `@${nickname}`;
+  }
+
+  return `@user${String(user?.id || "").replace(/-/g, "").slice(0, 8) || "profile"}`;
+}
+
+function needsProfileHydration(user) {
+  const hasFirstName = String(user?.first_name ?? user?.firstName ?? "").trim();
+  const hasLastName = String(user?.last_name ?? user?.lastName ?? "").trim();
+  return Boolean(user?.id) && !hasFirstName && !hasLastName;
 }
 
 function isPrivateAccount(user) {
@@ -233,6 +257,64 @@ export default function UsersPage() {
       ignore = true;
     };
   }, [activeQuery]);
+
+  useEffect(() => {
+    const usersToHydrate = users.filter(needsProfileHydration).slice(0, 12);
+    if (!usersToHydrate.length) {
+      return undefined;
+    }
+
+    let ignore = false;
+
+    async function hydrateUsers() {
+      const hydratedUsers = await Promise.all(
+        usersToHydrate.map(async (user) => {
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+              method: "GET",
+              credentials: "include",
+            });
+            const payload = await parseResponse(response);
+
+            if (!response.ok || !payload?.success || !payload?.data) {
+              return null;
+            }
+
+            return {
+              id: user.id,
+              first_name: payload.data.first_name || "",
+              last_name: payload.data.last_name || "",
+              nickname: payload.data.nickname || user.nickname || "",
+              avatar_path: payload.data.avatar_path || user.avatar_path || "",
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (ignore) {
+        return;
+      }
+
+      const hydratedById = new Map(hydratedUsers.filter(Boolean).map((user) => [user.id, user]));
+      if (!hydratedById.size) {
+        return;
+      }
+
+      setUsers((currentUsers) =>
+        currentUsers.map((user) =>
+          hydratedById.has(user.id) ? { ...user, ...hydratedById.get(user.id) } : user
+        )
+      );
+    }
+
+    hydrateUsers();
+
+    return () => {
+      ignore = true;
+    };
+  }, [users]);
 
   async function handleLoadMore() {
     if (!nextCursor || isLoadingMore) {
@@ -548,16 +630,14 @@ export default function UsersPage() {
                     </span>
                   ) : null}
                   <div className="flex h-24 w-full items-center justify-center">
-                    {renderAvatar(user.avatar_path, displayName)}
+                    <UserAvatar avatarPath={user.avatar_path} label={displayName} />
                   </div>
 
                   <div className="w-full min-w-0 overflow-hidden px-1">
                     <div className="flex min-w-0 items-center justify-center gap-2">
                       <h2 className="truncate text-base font-semibold text-white">{displayName}</h2>
                     </div>
-                    {user.nickname ? (
-                      <p className="truncate text-xs text-white/45">@{user.nickname}</p>
-                    ) : null}
+                    <p className="truncate text-xs text-white/45">{getUserHandle(user)}</p>
                   </div>
 
                   <button

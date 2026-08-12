@@ -11,6 +11,7 @@ type UserProfileResponse struct {
 	AvatarPath     string    `json:"avatar_path"`
 	IsPublic       bool      `json:"is_public"`
 	IsFollowing    int       `json:"is_following"`
+	IsBlocked      bool      `json:"is_blocked"`
 	TotalPosts     int       `json:"total_posts"`
 	TotalFollowers int       `json:"total_followers"`
 	TotalFollowing int       `json:"total_following"`

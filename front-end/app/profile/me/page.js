@@ -63,6 +63,7 @@ export default function MyProfilePage() {
   const [loadedConnectionsTabs, setLoadedConnectionsTabs] = useState([]);
   const [isConnectionsLoading, setIsConnectionsLoading] = useState(false);
   const [connectionsError, setConnectionsError] = useState("");
+  const [unblockingUserId, setUnblockingUserId] = useState("");
   const [editingPost, setEditingPost] = useState(null);
   const [loadingEditPostId, setLoadingEditPostId] = useState("");
   const [deletingPostId, setDeletingPostId] = useState("");
@@ -388,6 +389,36 @@ export default function MyProfilePage() {
     setConnectionsError("");
   }
 
+  async function handleUnblockConnection(userId) {
+    if (!userId || unblockingUserId) {
+      return;
+    }
+
+    setUnblockingUserId(userId);
+    setConnectionsError("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/blocks/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const payload = await parseResponse(response);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to unblock user");
+      }
+
+      setConnectionsByTab((current) => ({
+        ...current,
+        blocked: (current.blocked || []).filter((user) => user.user_id !== userId),
+      }));
+    } catch (error) {
+      setConnectionsError(error.message || "Failed to unblock user");
+    } finally {
+      setUnblockingUserId("");
+    }
+  }
+
   function handleCloseConnectionsModal() {
     setIsConnectionsModalOpen(false);
     setConnectionsError("");
@@ -618,6 +649,8 @@ export default function MyProfilePage() {
         isConnectionsLoading={isConnectionsLoading}
         connectionsError={connectionsError}
         showBlockedConnectionsTab
+        onUnblockConnection={handleUnblockConnection}
+        unblockingUserId={unblockingUserId}
         currentUserId={profile?.id || ""}
         onEditPost={handleOpenEditPost}
         onDeletePost={handleDeletePost}

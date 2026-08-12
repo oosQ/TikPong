@@ -149,7 +149,10 @@ function getInitial(label) {
 }
 
 function getDisplayName(user) {
-  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+  const fullName = [user?.first_name ?? user?.firstName, user?.last_name ?? user?.lastName]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
 
   if (fullName) {
     return fullName;
@@ -163,20 +166,29 @@ function getDisplayName(user) {
 }
 
 function renderSidebarAvatar(user, sizeClassName = "h-11 w-11") {
-  if (user?.avatar_path) {
-    return (
-      <img
-        src={normalizeImagePath(user.avatar_path)}
-        alt={getDisplayName(user)}
-        className={`${sizeClassName} rounded-2xl object-cover`}
-      />
-    );
-  }
+  return <SidebarAvatar user={user} sizeClassName={sizeClassName} />;
+}
+
+function SidebarAvatar({ user, sizeClassName = "h-11 w-11" }) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const label = getDisplayName(user);
+  const avatarPath = String(user?.avatar_path || "").trim();
 
   return (
-    <div className={`flex items-center justify-center rounded-2xl bg-white text-sm font-semibold text-black ${sizeClassName}`}>
-      {getInitial(user?.nickname || user?.first_name || "Guest")}
-    </div>
+    <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_12px_34px_rgba(0,0,0,0.35)]">
+      {avatarPath && !hasImageError ? (
+        <img
+          src={normalizeImagePath(avatarPath)}
+          alt={label}
+          onError={() => setHasImageError(true)}
+          className={`${sizeClassName} rounded-full border-2 border-black object-cover`}
+        />
+      ) : (
+        <span className={`flex items-center justify-center rounded-full border-2 border-black bg-white text-sm font-semibold text-black ${sizeClassName}`}>
+          {getInitial(label)}
+        </span>
+      )}
+    </span>
   );
 }
 

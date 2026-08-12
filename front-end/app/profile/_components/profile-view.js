@@ -51,23 +51,19 @@ function formatCount(count) {
 }
 
 function getHandle(profile) {
-  if (profile?.nickname) {
-    return `@${profile.nickname.replace(/\s+/g, "").toLowerCase()}`;
+  const nickname = String(profile?.nickname || "").trim();
+  if (nickname) {
+    return `@${nickname.replace(/\s+/g, "").toLowerCase()}`;
   }
 
-  if (profile?.first_name || profile?.last_name) {
-    return `@${[profile.first_name, profile.last_name]
-      .filter(Boolean)
-      .join("")
-      .replace(/\s+/g, "")
-      .toLowerCase()}`;
-  }
-
-  return `@${String(profile?.id || "user").slice(0, 8).toLowerCase()}`;
+  return `@user${String(profile?.id || "").replace(/-/g, "").slice(0, 8) || "profile"}`;
 }
 
 function getDisplayName(profile) {
-  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+  const fullName = [profile?.first_name ?? profile?.firstName, profile?.last_name ?? profile?.lastName]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
 
   if (fullName) {
     return fullName;
@@ -77,7 +73,17 @@ function getDisplayName(profile) {
     return profile.nickname;
   }
 
-  return "User";
+  return `User ${String(profile?.id || "").replace(/-/g, "").slice(0, 6) || "profile"}`;
+}
+
+function AvatarFallback({ label, className }) {
+  return (
+    <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[3px] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+      <div className={`flex items-center justify-center rounded-full border-4 border-black bg-white font-semibold text-black ${className}`}>
+        {getInitial(label)}
+      </div>
+    </span>
+  );
 }
 
 function buildProfileShareUrl(profile) {
@@ -117,17 +123,28 @@ function DotsIcon() {
 }
 
 function renderProfileAvatar(profile, avatarPreviewUrl, isSelf, onAvatarClick) {
+  return <ProfileAvatar profile={profile} avatarPreviewUrl={avatarPreviewUrl} isSelf={isSelf} onAvatarClick={onAvatarClick} />;
+}
+
+function ProfileAvatar({ profile, avatarPreviewUrl, isSelf, onAvatarClick }) {
+  const [hasImageError, setHasImageError] = useState(false);
   const avatar = avatarPreviewUrl || profile?.avatar_path;
-  const content = avatar ? (
-    <img
-      src={normalizeImagePath(avatar)}
-      alt={profile.nickname || profile.id}
-      className="h-28 w-28 rounded-full object-cover ring-4 ring-white/10 sm:h-32 sm:w-32"
-    />
+  const label = getDisplayName(profile) || profile?.id || "User";
+  useEffect(() => {
+    setHasImageError(false);
+  }, [avatar]);
+
+  const content = avatar && !hasImageError ? (
+    <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[3px] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+      <img
+        src={normalizeImagePath(avatar)}
+        alt={label}
+        onError={() => setHasImageError(true)}
+        className="h-28 w-28 rounded-full border-4 border-black object-cover sm:h-32 sm:w-32"
+      />
+    </span>
   ) : (
-    <div className="flex h-28 w-28 items-center justify-center rounded-full bg-white text-4xl font-semibold text-black ring-4 ring-white/10 sm:h-32 sm:w-32">
-      {getInitial(profile?.nickname || profile?.first_name || profile?.id)}
-    </div>
+    <AvatarFallback label={label} className="h-28 w-28 text-4xl sm:h-32 sm:w-32" />
   );
 
   if (!isSelf || !onAvatarClick) {
@@ -315,7 +332,10 @@ function renderAvatarPreview(profile, avatarPreviewUrl) {
 }
 
 function getConnectionFullName(user) {
-  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+  const fullName = [user?.first_name ?? user?.firstName, user?.last_name ?? user?.lastName]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
 
   if (fullName) {
     return fullName;
@@ -380,6 +400,7 @@ export default function ProfileView({
   onFollowAction,
   onMessageClick,
   onBlockUser,
+  onUnblockUser,
   canMessage = true,
   isFollowActionLoading = false,
   followActionError = "",
@@ -395,11 +416,14 @@ export default function ProfileView({
   isConnectionsLoading = false,
   connectionsError = "",
   showBlockedConnectionsTab = false,
+  onUnblockConnection,
+  unblockingUserId = "",
   currentUserId = "",
   onEditPost,
   onDeletePost,
   loadingEditPostId = "",
   deletingPostId = "",
+  onBack,
 }) {
   const [shareFeedback, setShareFeedback] = useState("");
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -414,6 +438,8 @@ export default function ProfileView({
   const isGridLoading = isLoading || (activeTab === "liked" && isLikedPostsLoading) || (activeTab === "reposts" && isRepostPostsLoading);
   const gridErrorMessage = activeTab === "liked" ? likedPostsError : activeTab === "reposts" ? repostPostsError : "";
   const isUnfollowAction = !isSelf && (followActionLabel === "Unfollow" || Number(profile?.is_following) === 1);
+  const isFollowRequestPending = !isSelf && followActionLabel === "Follow request pending";
+  const isBlockedProfile = !isSelf && Boolean(profile?.is_blocked);
   const connectionsLabel =
     activeConnectionsTab === "followers"
       ? "Followers"
@@ -575,7 +601,19 @@ export default function ProfileView({
       <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
+          <div className="flex items-center gap-3">
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white"
+                aria-label="Back to users"
+              >
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+                  <path d="M14.5 6.5 9 12l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : null}
             <p className="text-sm uppercase tracking-[0.22em] text-white/45">{titleLabel}</p>
           </div>
         </div>
@@ -663,13 +701,24 @@ export default function ProfileView({
                     >
                       Edit profile
                     </button>
+                  ) : isBlockedProfile ? (
+                    <button
+                      type="button"
+                      onClick={onUnblockUser}
+                      disabled={isBlockActionLoading}
+                      className="rounded-xl border border-emerald-400/35 bg-emerald-400/12 px-8 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/18 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isBlockActionLoading ? "Unblocking..." : "Unblock user"}
+                    </button>
                   ) : (
                     <button
                       type="button"
                       onClick={onFollowAction}
                       disabled={isFollowActionDisabled || isFollowActionLoading}
                       className={`rounded-xl px-8 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                        isUnfollowAction
+                        isFollowRequestPending
+                          ? "border border-amber-300/35 bg-amber-300/12 text-amber-100 hover:bg-amber-300/18"
+                          : isUnfollowAction
                           ? "border border-white/15 bg-white/8 text-white hover:bg-white/14"
                           : "bg-[#fe2c55] text-white hover:bg-[#e0264b]"
                       }`}
@@ -684,7 +733,7 @@ export default function ProfileView({
                               : "Request follow")}
                     </button>
                   )}
-                  {!isSelf && canMessage ? (
+                  {!isSelf && !isBlockedProfile && canMessage ? (
                     <button
                       type="button"
                       onClick={onMessageClick}
@@ -701,7 +750,7 @@ export default function ProfileView({
                     <ShareIcon />
                     Share
                   </button>
-                  {!isSelf && onBlockUser ? (
+                  {!isSelf && !isBlockedProfile && onBlockUser ? (
                     <div ref={profileMenuRef} className="relative">
                       <button
                         type="button"
@@ -1095,13 +1144,28 @@ export default function ProfileView({
                             <p className="truncate text-sm text-white/45">{getConnectionFullName(user)}</p>
                           </div>
                         </div>
-                        <div className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/85">
-                          {activeConnectionsTab === "following"
-                            ? "Following"
-                            : activeConnectionsTab === "blocked"
-                              ? "Blocked"
-                              : "Profile"}
-                        </div>
+                        {activeConnectionsTab === "blocked" && onUnblockConnection ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onUnblockConnection(user.user_id);
+                            }}
+                            disabled={unblockingUserId === user.user_id}
+                            className="shrink-0 rounded-xl border border-emerald-400/35 bg-emerald-400/12 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/18 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {unblockingUserId === user.user_id ? "Unblocking..." : "Unblock"}
+                          </button>
+                        ) : (
+                          <div className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/85">
+                            {activeConnectionsTab === "following"
+                              ? "Following"
+                              : activeConnectionsTab === "blocked"
+                                ? "Blocked"
+                                : "Profile"}
+                          </div>
+                        )}
                       </Link>
                     ))}
                   </div>

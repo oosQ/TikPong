@@ -123,13 +123,19 @@ function GroupAvatar({ avatarPath, label, sizeClassName = "h-12 w-12 text-sm" })
   const src = normalizeImagePath(avatarPath || "");
 
   if (src) {
-    return <img src={src} alt={label} className={`${sizeClassName} shrink-0 rounded-2xl object-cover`} />;
+    return (
+      <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+        <img src={src} alt={label} className={`${sizeClassName} rounded-full border-4 border-black object-cover`} />
+      </span>
+    );
   }
 
   return (
-    <div className={`flex shrink-0 items-center justify-center rounded-2xl bg-white text-black font-semibold ${sizeClassName}`}>
-      {getInitial(label)}
-    </div>
+    <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+      <div className={`flex items-center justify-center rounded-full border-4 border-black bg-white text-black font-semibold ${sizeClassName}`}>
+        {getInitial(label)}
+      </div>
+    </span>
   );
 }
 
@@ -137,13 +143,19 @@ function UserAvatar({ avatarPath, label }) {
   const src = normalizeImagePath(avatarPath || "");
 
   if (src) {
-    return <img src={src} alt={label} className="h-10 w-10 shrink-0 rounded-full object-cover" />;
+    return (
+      <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
+        <img src={src} alt={label} className="h-10 w-10 rounded-full border-2 border-black object-cover" />
+      </span>
+    );
   }
 
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
-      {getInitial(label)}
-    </div>
+    <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-black bg-white text-sm font-semibold text-black">
+        {getInitial(label)}
+      </div>
+    </span>
   );
 }
 
@@ -189,10 +201,43 @@ function formatMemberCount(value) {
   return `${value} member${value === 1 ? "" : "s"}`;
 }
 
+function parseCount(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function getRawMemberCount(group) {
+  return group?.member_count ?? group?.memberCount ?? group?.members_count ?? group?.total_members;
+}
+
 function MenuIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
       <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MemberIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-3.5 w-3.5">
+      <path
+        d="M8 11.5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5ZM16.5 10a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM4.5 18.5a3.5 3.5 0 0 1 7 0M13 18a3 3 0 0 1 6 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -527,6 +572,7 @@ export default function GroupsPage() {
           creator_id: group.creator_id || "",
           preview: group.last_message || "No group messages yet",
           last_activity: group.last_message_at || "",
+          created_at: group.created_at || "",
           is_member: true,
         }));
 
@@ -545,6 +591,8 @@ export default function GroupsPage() {
           preview: group.description || "Browse this group",
           last_activity: group.created_at || "",
           is_member: joinedGroupIds.has(group.id),
+          member_count: parseCount(getRawMemberCount(group)),
+          created_at: group.created_at || "",
         }));
 
         const discoveredGroupById = new Map(discoveredGroups.map((group) => [group.id, group]));
@@ -560,6 +608,7 @@ export default function GroupsPage() {
             description: group.description || discoveredGroup.description,
             group_avatar: group.group_avatar || discoveredGroup.group_avatar,
             creator_id: group.creator_id || discoveredGroup.creator_id,
+            member_count: parseCount(getRawMemberCount(group)) ?? parseCount(getRawMemberCount(discoveredGroup)),
             preview: group.preview || discoveredGroup.preview,
             last_activity: group.last_activity || discoveredGroup.last_activity,
             is_member: true,
@@ -2236,8 +2285,8 @@ export default function GroupsPage() {
       return null;
     }
 
-    const detailedCount = groupDetailsById[group.id]?.member_count;
-    if (typeof detailedCount === "number") {
+    const detailedCount = parseCount(getRawMemberCount(groupDetailsById[group.id]));
+    if (detailedCount !== null) {
       return detailedCount;
     }
 
@@ -2246,8 +2295,9 @@ export default function GroupsPage() {
       return cachedMembers.length;
     }
 
-    if (typeof group.member_count === "number") {
-      return group.member_count;
+    const groupCount = parseCount(getRawMemberCount(group));
+    if (groupCount !== null) {
+      return groupCount;
     }
 
     return null;
@@ -2320,6 +2370,7 @@ export default function GroupsPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredGroups.map((group) => {
               const groupMemberCount = getGroupMemberCount(group);
+              const createdLabel = formatRelativeDate(group.created_at || group.last_activity);
               const joinRequestStatus = joinRequestStatusByGroupId[group.id] || (group.is_member ? "member" : "idle");
               const isJoinRequestLoading = Boolean(joinRequestLoadingByGroupId[group.id]);
               const joinRequestError = joinRequestErrorByGroupId[group.id] || "";
@@ -2334,7 +2385,7 @@ export default function GroupsPage() {
               return (
                 <article
                   key={group.id}
-                  className="group relative flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] p-5 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+                  className="group relative flex min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0d0d0d] p-5 shadow-[0_20px_70px_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#111111]"
                 >
                   <button
                     type="button"
@@ -2344,6 +2395,18 @@ export default function GroupsPage() {
                     }}
                     className="flex min-w-0 flex-1 flex-col items-center gap-4 text-center"
                   >
+                    <div className={`flex w-full items-start gap-3 ${group.is_member ? "justify-between" : "justify-end"}`}>
+                      {group.is_member ? (
+                        <span className="rounded-full bg-[#fe2c55]/14 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ffc1cf]">
+                          Joined
+                        </span>
+                      ) : null}
+                      {createdLabel ? (
+                        <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                          {createdLabel}
+                        </span>
+                      ) : null}
+                    </div>
                     <GroupAvatar avatarPath={group.group_avatar} label={group.title} sizeClassName="h-24 w-24 text-2xl" />
                     <div className="w-full min-w-0">
                       <h2 className="truncate text-base font-semibold text-white">{group.title}</h2>
@@ -2351,12 +2414,10 @@ export default function GroupsPage() {
                         {group.description || group.preview || "Browse this group"}
                       </p>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${group.is_member ? "bg-[#fe2c55]/14 text-[#ffc1cf]" : "bg-white/[0.06] text-white/50"}`}>
-                        {group.is_member ? "Joined" : "Browse"}
-                      </span>
+                    <div className="flex w-full flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-4">
                       {groupMemberCount !== null ? (
-                        <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                          <MemberIcon />
                           {formatMemberCount(groupMemberCount)}
                         </span>
                       ) : null}
