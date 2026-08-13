@@ -1,7 +1,0 @@
-1. When user follow other user the notification not work
-2. When we send follow request to private user I can't undo the request unless I am in /users , while in profile I can't
-3. Replace the like/comment/view/repost with real icon using font awesome rather than just the letter
-4. remove the like option of the comment
-5. In groups/ fix the responsivenss becuase the side bar not work
-6. When I block a user , I cant see the block list in the profile , fix that
-7. when I run docker compose --build , not work , check where is the issue 

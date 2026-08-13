@@ -14,15 +14,13 @@ var DB *sql.DB
 
 func InitDB() {
 	var err error
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "data/database.db"
-	}
+	dbPath := "data/database.db"
 
 	isNewDatabase, err := isNewSQLiteDatabase(dbPath)
 	if err != nil {
 		log.Fatal("Error preparing DB path:", err)
 	}
+
 	if isNewDatabase {
 		if err = cleanupUploadedImages(); err != nil {
 			log.Fatal("Error cleaning uploads for new DB:", err)
@@ -34,20 +32,22 @@ func InitDB() {
 		log.Fatal(err)
 	}
 
+	// --- Check the connection to the database ---
 	if err = DB.Ping(); err != nil {
 		log.Fatal("Error connecting to DB:", err)
 	}
 
+	// --- Enable foreign key constraints ---
 	_, err = DB.Exec(`PRAGMA foreign_keys = ON;`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// --- Run migrations ---
 	if err = runMigrations(DB); err != nil {
 		log.Fatal("Error running migrations:", err)
 	}
 
-	
 	go cleanupExpiredSessions()
 }
 
