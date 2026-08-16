@@ -5,24 +5,14 @@ import (
 	"strings"
 )
 
-var (
-	// These default values should be replaced with your actual Google OAuth credentials
-	defaultGoogleClientID     = ""
-	defaultGoogleRedirectURI  = "http://localhost:8433/api/auth/google/callback"
-	defaultGoogleClientSecret = ""
-)
+const defaultGoogleRedirectURI = "http://localhost:8433/api/auth/google/callback"
 
 func GetGoogleClientSecret() string {
-	if value := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")); value != "" {
-		return value
-	}
-	return defaultGoogleClientSecret
+	return strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
 }
+
 func GetGoogleClientID() string {
-	if value := strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")); value != "" {
-		return value
-	}
-	return defaultGoogleClientID
+	return strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
 }
 
 func GetGoogleRedirectURI() string {
