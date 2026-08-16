@@ -131,12 +131,12 @@ func GetGroupMessages(groupID, cursor string, limit int) (*dto.GetGroupMessagesR
 		WHERE gm.group_id = ?
 		AND (
 			? = ''
-			OR gm.created_at > (SELECT created_at FROM group_messages WHERE id = ?)
-			OR (gm.created_at = (SELECT created_at FROM group_messages WHERE id = ?) AND gm.id > ?)
+			OR gm.created_at < (SELECT created_at FROM group_messages WHERE id = ? AND group_id = ?)
+			OR (gm.created_at = (SELECT created_at FROM group_messages WHERE id = ? AND group_id = ?) AND gm.id < ?)
 		)
-		ORDER BY gm.created_at ASC, gm.id ASC
+		ORDER BY gm.created_at DESC, gm.id DESC
 		LIMIT ?
-	`, groupID, cursor, cursor, cursor, cursor, limit+1)
+	`, groupID, cursor, cursor, groupID, cursor, groupID, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +163,10 @@ func GetGroupMessages(groupID, cursor string, limit int) (*dto.GetGroupMessagesR
 	if len(items) > limit {
 		result.Messages = items[:limit]
 		result.NextCursor = result.Messages[len(result.Messages)-1].ID
+	}
+
+	for left, right := 0, len(result.Messages)-1; left < right; left, right = left+1, right-1 {
+		result.Messages[left], result.Messages[right] = result.Messages[right], result.Messages[left]
 	}
 
 	return result, nil

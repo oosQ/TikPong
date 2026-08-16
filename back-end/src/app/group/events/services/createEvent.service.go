@@ -28,6 +28,9 @@ func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string,
 	if err != nil {
 		return "", errors.New("event_time must include a valid date and time")
 	}
+	if !eventTime.After(time.Now()) {
+		return "", errors.New("event_time must be in the future")
+	}
 
 	eventID, err := utils.GenerateUUID()
 	if err != nil {
@@ -59,16 +62,20 @@ func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string,
 
 func parseEventTime(value string) (time.Time, error) {
 	trimmed := strings.TrimSpace(value)
-	formats := []string{
-		time.RFC3339,
+
+	if parsed, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return parsed, nil
+	}
+
+	localFormats := []string{
 		"2006-01-02T15:04",
 		"2006-01-02 15:04",
 		"2006-01-02",
 	}
 
 	var lastErr error
-	for _, format := range formats {
-		parsed, err := time.Parse(format, trimmed)
+	for _, format := range localFormats {
+		parsed, err := time.ParseInLocation(format, trimmed, time.Local)
 		if err == nil {
 			return parsed, nil
 		}

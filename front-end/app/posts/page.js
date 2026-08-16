@@ -1261,7 +1261,7 @@ export default function PostsPage() {
           <div className="border-t border-white/10 p-5">
             {currentUser ? (
               <div className="space-y-3">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-4 py-3 transition focus-within:border-white/25">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-3 py-3 transition focus-within:border-white/25">
                   {selectedImage ? (
                     <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl bg-black/25 px-3 py-2">
                       <span className="max-w-[140px] truncate text-xs text-white/55">
@@ -1281,26 +1281,26 @@ export default function PostsPage() {
                       </button>
                     </div>
                   ) : null}
-                  <input
-                    type="text"
-                    value={commentDraft}
-                    onChange={(event) =>
-                      setCommentDraftByPostId((current) => ({
-                        ...current,
-                        [activeCommentsPostId]: event.target.value,
-                      }))
-                    }
-                    placeholder="Write a comment"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        handleCreateComment();
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={commentDraft}
+                      onChange={(event) =>
+                        setCommentDraftByPostId((current) => ({
+                          ...current,
+                          [activeCommentsPostId]: event.target.value,
+                        }))
                       }
-                    }}
-                    className="h-10 w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
-                  />
-                  <div className="mt-2 flex items-center justify-end gap-2">
-                    <label className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Add image" title="Add image">
+                      placeholder="Write a comment"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleCreateComment();
+                        }
+                      }}
+                      className="h-11 min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/35"
+                    />
+                    <label className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-white/55 transition hover:bg-white/10 hover:text-white" aria-label="Add image" title="Add image">
                       <ImageIcon />
                       <input
                         type="file"
@@ -1319,7 +1319,7 @@ export default function PostsPage() {
                       type="button"
                       onClick={handleCreateComment}
                       disabled={isSubmittingComment}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fe2c55] text-white transition hover:bg-[#e0264b] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#fe2c55] text-white transition hover:bg-[#e0264b] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label="Send comment"
                     >
                       {isSubmittingComment ? <span className="loading-spinner loading-spinner-sm" /> : <SendIcon />}
@@ -1414,7 +1414,7 @@ export default function PostsPage() {
                 isLikePending={pendingLikePostIds.includes(post.id)}
                 isRepostPending={pendingRepostPostIds.includes(post.id)}
                 isFollowUserPending={pendingFollowUserIds.includes(post.user_id)}
-                showFollowUserButton={activeMode === "explore" && post.user_id !== currentUser?.id}
+                showFollowUserButton={post.user_id !== currentUser?.id}
                 activeCommentsPostId={activeCommentsPostId}
               />
             ))}

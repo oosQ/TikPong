@@ -774,20 +774,22 @@ export default function AppShell({ children }) {
         ) : null}
       </button>
 
-      {notificationPulse && unreadCount > 0 && !isNavOpen ? (
-        <Link
-          key={getRealtimeNotificationKey(notificationPulse)}
-          href="/notifications"
-          className={`${isNotificationPulseLeaving ? "notification-toast-exit" : "notification-toast-enter"} fixed left-1/2 top-4 z-[70] flex w-[min(92vw,440px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-white/12 bg-[#171717]/96 px-4 py-3 text-left text-sm text-white shadow-[0_20px_65px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-colors duration-300 hover:bg-[#202020]`}
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fe2c55]/15 text-[#ff6b89]">
-            <NotificationTypeIcon type={notificationPulse.type} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#fe2c55]">New notification</span>
-            <span className="mt-1 block truncate text-white/78">{notificationPulse.title || notificationPulse.message || "Open notifications"}</span>
-          </span>
-        </Link>
+      {notificationPulse && unreadCount > 0 && !isNavOpen && !(isMessagesRoute && notificationPulse.type === "private_message") ? (
+        <div className="notification-toast-viewport pointer-events-none fixed top-4 z-[70]">
+          <Link
+            key={getRealtimeNotificationKey(notificationPulse)}
+            href="/notifications"
+            className={`${isNotificationPulseLeaving ? "notification-toast-exit" : "notification-toast-enter"} notification-toast pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/12 bg-[#171717]/96 px-4 py-3 text-left text-sm text-white shadow-[0_20px_65px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-colors duration-300 hover:bg-[#202020]`}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fe2c55]/15 text-[#ff6b89]">
+              <NotificationTypeIcon type={notificationPulse.type} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#fe2c55]">New notification</span>
+              <span className="mt-1 block truncate text-white/78">{notificationPulse.title || notificationPulse.message || "Open notifications"}</span>
+            </span>
+          </Link>
+        </div>
       ) : null}
 
       {isNavOpen ? (

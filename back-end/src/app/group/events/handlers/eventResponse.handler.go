@@ -34,5 +34,5 @@ func EventResponseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendSuccess(w, nil, "Event response saved")
+	utils.SendSuccess(w, nil, "Event response updated")
 }

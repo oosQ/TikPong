@@ -956,7 +956,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const container = messageListRef.current;
-    if (!container) {
+    if (!container || isMessagesLoading) {
       return;
     }
 
@@ -971,7 +971,7 @@ export default function MessagesPage() {
       shouldScrollToBottomRef.current = false;
       container.scrollTop = container.scrollHeight;
     }
-  }, [messages]);
+  }, [isMessagesLoading, isPeerTyping, messages]);
 
   useEffect(() => {
     let ignore = false;
@@ -1181,6 +1181,7 @@ export default function MessagesPage() {
           return;
         }
 
+        shouldScrollToBottomRef.current = true;
         setIsPeerTyping(true);
         if (remoteTypingTimeoutRef.current) {
           window.clearTimeout(remoteTypingTimeoutRef.current);

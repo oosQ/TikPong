@@ -27,5 +27,5 @@ func SetEventResponse(groupID, eventID, userID, response string) error {
 		return errors.New("event not found in group")
 	}
 
-	return repo.SetEventResponse(eventID, userID, response)
+	return repo.ToggleEventResponse(eventID, userID, response)
 }

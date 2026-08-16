@@ -515,6 +515,20 @@ function PostActionRail({
   const [isShareRecipientsLoading, setIsShareRecipientsLoading] = useState(false);
   const [shareRecipientsError, setShareRecipientsError] = useState("");
   const [sharingRecipientId, setSharingRecipientId] = useState("");
+  const [isLikeAnimating, setIsLikeAnimating] = useState(false);
+  const [isFollowAnimating, setIsFollowAnimating] = useState(false);
+  const likeAnimationTimeoutRef = useRef(null);
+  const followAnimationTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const likeTimeout = likeAnimationTimeoutRef;
+    const followTimeout = followAnimationTimeoutRef;
+
+    return () => {
+      window.clearTimeout(likeTimeout.current);
+      window.clearTimeout(followTimeout.current);
+    };
+  }, []);
 
   if (mode === "none") {
     return null;
@@ -530,6 +544,28 @@ function PostActionRail({
 
   function preventPointerFocus(event) {
     event.preventDefault();
+  }
+
+  function handleLikeClick() {
+    if (!isLiked) {
+      window.clearTimeout(likeAnimationTimeoutRef.current);
+      setIsLikeAnimating(false);
+      window.requestAnimationFrame(() => {
+        setIsLikeAnimating(true);
+        likeAnimationTimeoutRef.current = window.setTimeout(() => setIsLikeAnimating(false), 700);
+      });
+    }
+    onLikeToggle?.(post);
+  }
+
+  function handleFollowClick() {
+    window.clearTimeout(followAnimationTimeoutRef.current);
+    setIsFollowAnimating(false);
+    window.requestAnimationFrame(() => {
+      setIsFollowAnimating(true);
+      followAnimationTimeoutRef.current = window.setTimeout(() => setIsFollowAnimating(false), 700);
+    });
+    onFollowUser?.(post);
   }
 
   async function loadShareRecipients() {
@@ -634,12 +670,13 @@ function PostActionRail({
             <button
               type="button"
               onMouseDown={preventPointerFocus}
-              onClick={() => onFollowUser?.(post)}
+              onClick={handleFollowClick}
               disabled={isFollowUserPending}
-              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-black bg-[#fe2c55] text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)] transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-65"
+              className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-black bg-[#fe2c55] text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)] transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-65 ${isFollowAnimating ? "post-follow-pop" : ""}`}
               aria-label={`Follow ${post.nickname || post.user_id}`}
               title={`Follow ${post.nickname || post.user_id}`}
             >
+              {isFollowAnimating ? <span className="post-follow-ring" aria-hidden="true" /> : null}
               {isFollowUserPending ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : <PlusIcon />}
             </button>
           ) : null}
@@ -650,10 +687,12 @@ function PostActionRail({
           <button
             type="button"
             onMouseDown={preventPointerFocus}
-            onClick={() => onLikeToggle?.(post)}
+            onClick={handleLikeClick}
             disabled={isLikePending}
-            className={`flex h-11 w-11 items-center justify-center sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8 ${railTone} transition-all duration-200 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-80`}
+            className={`relative flex h-11 w-11 items-center justify-center sm:h-14 sm:w-14 [&_svg]:h-7 [&_svg]:w-7 sm:[&_svg]:h-8 sm:[&_svg]:w-8 ${railTone} transition-all duration-200 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 ${isLikeAnimating ? "post-like-pop" : ""}`}
+            aria-label={isLiked ? "Unlike post" : "Like post"}
           >
+            {isLikeAnimating ? <span className="post-like-burst" aria-hidden="true" /> : null}
             <HeartIcon />
           </button>
         ) : (

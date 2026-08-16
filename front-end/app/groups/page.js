@@ -112,6 +112,12 @@ function formatLongDate(value) {
   }).format(date);
 }
 
+function getMinimumEventTime() {
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return localNow.toISOString().slice(0, 16);
+}
+
 function formatCreatedDate(value) {
   if (!value) {
     return "";
@@ -566,6 +572,7 @@ export default function GroupsPage() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [expandedImageUrl, setExpandedImageUrl] = useState("");
   const groupComposerRef = useRef(null);
+  const groupChatListRef = useRef(null);
   const groupDraftInputRef = useRef(null);
   const groupAttachmentInputRef = useRef(null);
   const groupMenuRef = useRef(null);
@@ -609,6 +616,21 @@ export default function GroupsPage() {
   useEffect(() => {
     chatByGroupIdRef.current = chatByGroupId;
   }, [chatByGroupId]);
+
+  const selectedGroupChatMessageCount = (chatByGroupId[selectedGroupId] || []).length;
+  const selectedGroupTypingCount = (typingUserIdsByGroupId[selectedGroupId] || []).length;
+  const isSelectedGroupChatLoading = Boolean(chatLoadingByGroupId[selectedGroupId]);
+
+  useEffect(() => {
+    if (activeTab !== "chat" || isSelectedGroupChatLoading) return undefined;
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      const container = groupChatListRef.current;
+      if (container) container.scrollTop = container.scrollHeight;
+    });
+
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [activeTab, isSelectedGroupChatLoading, selectedGroupChatMessageCount, selectedGroupId, selectedGroupTypingCount]);
 
   function sendGroupTypingState(groupId, isTyping) {
     const socket = socketRef.current;
@@ -1681,6 +1703,15 @@ export default function GroupsPage() {
       setCreateEventError("Title, description, and date/time are required");
       return;
     }
+    const parsedEventTime = new Date(eventTime);
+    if (Number.isNaN(parsedEventTime.getTime())) {
+      setCreateEventError("Choose a valid date and time");
+      return;
+    }
+    if (parsedEventTime.getTime() <= Date.now()) {
+      setCreateEventError("Event date and time must be in the future");
+      return;
+    }
     if (isCreatingEvent) return;
 
     setIsCreatingEvent(true);
@@ -1690,7 +1721,7 @@ export default function GroupsPage() {
       const payload = await getJson(`${API_BASE_URL}/api/groups/${groupId}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, event_time: eventTime }),
+        body: JSON.stringify({ title, description, event_time: parsedEventTime.toISOString() }),
       });
 
       const eventId = payload?.event_id;
@@ -1700,7 +1731,7 @@ export default function GroupsPage() {
         creator_id: currentUser?.id || "",
         title,
         description,
-        event_time: new Date(eventTime).toISOString(),
+        event_time: parsedEventTime.toISOString(),
         created_at: new Date().toISOString(),
       };
 
@@ -1742,17 +1773,18 @@ export default function GroupsPage() {
     if (!groupId || !eventId || !response) return;
 
     const previous = myEventResponseByEventId[eventId] ?? null;
-    setMyEventResponseByEventId((current) => ({ ...current, [eventId]: response }));
+    const nextResponse = previous === response ? null : response;
+    setMyEventResponseByEventId((current) => ({ ...current, [eventId]: nextResponse }));
     setEventResponseLoadingByEventId((current) => ({ ...current, [eventId]: true }));
 
     if (currentUser?.id) {
       setAllEventResponsesByEventId((current) => {
         const existing = current[eventId] || [];
         const without = existing.filter((r) => r.user_id !== currentUser.id);
-        return {
-          ...current,
-          [eventId]: [...without, { user_id: currentUser.id, nickname: currentUser.nickname || currentUser.id, avatar_path: currentUser.avatar_path || "", response }],
-        };
+        const updated = nextResponse
+          ? [...without, { user_id: currentUser.id, nickname: currentUser.nickname || currentUser.id, avatar_path: currentUser.avatar_path || "", response: nextResponse }]
+          : without;
+        return { ...current, [eventId]: updated };
       });
     }
 
@@ -2089,7 +2121,7 @@ export default function GroupsPage() {
 
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-black">
-        <div className="theme-scrollbar flex-1 overflow-y-auto px-5 py-6 sm:px-8">
+        <div ref={groupChatListRef} className="theme-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8">
           <div className="flex min-h-full w-full flex-col justify-end gap-6">
           {chatErrorByGroupId[selectedGroup.id] ? (
             <div className="rounded-2xl border border-[#fe2c55]/30 bg-[#fe2c55]/10 px-4 py-3 text-sm text-[#ffd6df]">
@@ -3089,6 +3121,7 @@ export default function GroupsPage() {
                 <input
                   type="datetime-local"
                   value={createEventTime}
+                  min={getMinimumEventTime()}
                   onChange={(e) => setCreateEventTime(e.target.value)}
                   className="w-full rounded-[20px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none [color-scheme:dark]"
                 />

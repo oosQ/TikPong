@@ -1,9 +1,10 @@
 package repo
 
 import (
+	"database/sql"
+	"social-network/src/app/group/events/dto"
 	"social-network/src/db"
 	"time"
-	"social-network/src/app/group/events/dto"
 )
 
 func CreateEvent(eventID, groupID, creatorID, title, description string, eventTime time.Time) error {
@@ -81,14 +82,44 @@ func DeleteEvent(groupID, eventID string) error {
 	return err
 }
 
-func SetEventResponse(eventID, userID, response string) error {
-	_, err := database.DB.Exec(`
-		INSERT INTO group_event_responses (event_id, user_id, response, updated_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(event_id, user_id)
-		DO UPDATE SET response = excluded.response, updated_at = excluded.updated_at
-	`, eventID, userID, response, time.Now())
-	return err
+func ToggleEventResponse(eventID, userID, response string) error {
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var currentResponse string
+	err = tx.QueryRow(`
+		SELECT response FROM group_event_responses
+		WHERE event_id = ? AND user_id = ?
+	`, eventID, userID).Scan(&currentResponse)
+
+	switch {
+	case err == sql.ErrNoRows:
+		_, err = tx.Exec(`
+			INSERT INTO group_event_responses (event_id, user_id, response, updated_at)
+			VALUES (?, ?, ?, ?)
+		`, eventID, userID, response, time.Now())
+	case err != nil:
+		return err
+	case currentResponse == response:
+		_, err = tx.Exec(`
+			DELETE FROM group_event_responses
+			WHERE event_id = ? AND user_id = ?
+		`, eventID, userID)
+	default:
+		_, err = tx.Exec(`
+			UPDATE group_event_responses
+			SET response = ?, updated_at = ?
+			WHERE event_id = ? AND user_id = ?
+		`, response, time.Now(), eventID, userID)
+	}
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func ListEvents(groupID, cursor string, limit int) (*dto.ListEventsResponse, error) {

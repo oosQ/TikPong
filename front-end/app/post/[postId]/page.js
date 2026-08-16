@@ -135,6 +135,12 @@ export default function PostDetailsPage() {
     };
   }
 
+  function handleHashtagClick(hashtagName) {
+    const normalizedHashtagName = String(hashtagName || "").trim();
+    if (!normalizedHashtagName) return;
+    router.push(`/hashtags/${encodeURIComponent(normalizedHashtagName)}`);
+  }
+
   async function loadPostDetail(targetPostId) {
     const response = await fetch(`${API_BASE_URL}/api/posts/${targetPostId}`, {
       method: "GET",
@@ -1169,24 +1175,21 @@ export default function PostDetailsPage() {
     : [];
 
   return (
-    <main className="relative min-h-screen bg-black px-4 py-0 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          {profileCollection?.posts?.length ? <div /> : <div className="pointer-events-auto">
-            <p className="text-sm uppercase tracking-[0.2em] text-white/45">Post View</p>
-            <h1 className="mt-2 text-3xl font-semibold text-white">Post details</h1>
-          </div>}
-          <Link
-            href={backLink.href}
-            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white backdrop-blur-sm transition hover:bg-white/10"
-            aria-label={backLink.label}
-          >
-            <BackIcon />
-          </Link>
-        </div>
-      </div>
+    <main className="relative flex h-screen flex-col overflow-hidden bg-black text-white">
+      <Link
+        href={backLink.href}
+        className="absolute left-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white backdrop-blur transition hover:bg-white/10 sm:left-6 sm:top-6"
+        aria-label={backLink.label}
+      >
+        <BackIcon />
+      </Link>
 
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center justify-center">
+      <div
+        ref={collectionScrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth snap-y snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-0 xl:px-8">
+          <div className="mx-auto flex max-w-5xl flex-col gap-0">
         {isLoading ? (
           <div className="flex min-h-screen items-center justify-center">
             <span className="loading-spinner" aria-label="Loading post" />
@@ -1196,36 +1199,29 @@ export default function PostDetailsPage() {
             {errorMessage}
           </div>
         ) : visibleCollectionPosts.length ? (
-          <div
-            ref={collectionScrollRef}
-            className="flex min-h-screen items-center justify-center overflow-hidden"
-          >
-            <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-0">
-              {visibleCollectionPosts.map((item) => (
-                <FeedPostCard
-                  key={item.id}
-                  post={item}
-                  articleProps={{ "data-collection-post-id": item.id }}
-                  articleClassName="mx-auto flex w-full max-w-[900px] items-center justify-center px-1 sm:px-0"
-                  actionRailMode="interactive"
-                  hashtagMode="span"
-                  currentUserId={currentUser?.id || ""}
-                  onLikeToggle={handleToggleLike}
-                  onRepostToggle={handleToggleRepost}
-                  onCommentsToggle={handleCommentsToggle}
-                  onEditPost={handleOpenEditPost}
-                  onDeletePost={handleDeletePost}
-                  onBlockUser={handleBlockUser}
-                  isOwnerActionLoading={loadingEditPostId === item.id}
-                  isDeletePending={deletingPostId === item.id}
-                  isBlockPending={blockingUserId === item.user_id}
-                  isLikePending={pendingLikePostIds.includes(item.id)}
-                  isRepostPending={pendingRepostPostIds.includes(item.id)}
-                  activeCommentsPostId={activeCommentsPostId}
-                />
-              ))}
-            </div>
-          </div>
+          visibleCollectionPosts.map((item) => (
+            <FeedPostCard
+              key={item.id}
+              post={item}
+              articleProps={{ "data-collection-post-id": item.id }}
+              actionRailMode="interactive"
+              hashtagMode="button"
+              currentUserId={currentUser?.id || ""}
+              onHashtagClick={handleHashtagClick}
+              onLikeToggle={handleToggleLike}
+              onRepostToggle={handleToggleRepost}
+              onCommentsToggle={handleCommentsToggle}
+              onEditPost={handleOpenEditPost}
+              onDeletePost={handleDeletePost}
+              onBlockUser={handleBlockUser}
+              isOwnerActionLoading={loadingEditPostId === item.id}
+              isDeletePending={deletingPostId === item.id}
+              isBlockPending={blockingUserId === item.user_id}
+              isLikePending={pendingLikePostIds.includes(item.id)}
+              isRepostPending={pendingRepostPostIds.includes(item.id)}
+              activeCommentsPostId={activeCommentsPostId}
+            />
+          ))
         ) : !post ? (
           <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 pt-32 text-center text-white/60">
             Post not found.
@@ -1233,10 +1229,10 @@ export default function PostDetailsPage() {
         ) : (
           <FeedPostCard
             post={post}
-            articleClassName="mx-auto flex w-full max-w-[900px] items-center justify-center px-1 sm:px-0"
             actionRailMode="interactive"
-            hashtagMode="span"
+            hashtagMode="button"
             currentUserId={currentUser?.id || ""}
+            onHashtagClick={handleHashtagClick}
             onLikeToggle={handleToggleLike}
             onRepostToggle={handleToggleRepost}
             onCommentsToggle={handleCommentsToggle}
@@ -1251,6 +1247,8 @@ export default function PostDetailsPage() {
             activeCommentsPostId={activeCommentsPostId}
           />
         )}
+          </div>
+        </div>
       </div>
       {renderCommentsPanel()}
       <PostEditModal
