@@ -421,9 +421,14 @@ function ThreadAvatar({ thread, size = "md" }) {
   const statusClass = size === "lg" ? "h-3.5 w-3.5 border-[3px]" : "h-3 w-3 border-2";
   const imagePath = thread?.avatar_path ? normalizeImagePath(thread.avatar_path) : "";
   const isOnline = String(thread?.status || "").toLowerCase() === "online";
-  const statusDot = isOnline ? (
-    <span className={`absolute bottom-0 right-0 rounded-full border-black bg-emerald-400 ${statusClass}`} aria-label="Online" />
-  ) : null;
+  const statusLabel = isOnline ? "Online" : "Offline";
+  const statusDot = (
+    <span
+      className={`absolute bottom-0 right-0 rounded-full border-black ${isOnline ? "bg-emerald-400" : "bg-[#ff3b5f]"} ${statusClass}`}
+      aria-label={statusLabel}
+      title={statusLabel}
+    />
+  );
 
   if (imagePath) {
     return (
@@ -634,12 +639,12 @@ export default function MessagesPage() {
 
   function sendTypingState(threadId, isTyping) {
     if (!threadId) {
-      return;
+      return false;
     }
 
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
+      return false;
     }
 
     socket.send(
@@ -651,6 +656,7 @@ export default function MessagesPage() {
         },
       })
     );
+    return true;
   }
 
   function startLocalTypingHeartbeat(threadId) {
@@ -714,11 +720,12 @@ export default function MessagesPage() {
     localTypingThreadRef.current = threadId;
 
     if (!localTypingStateRef.current) {
-      sendTypingState(threadId, true);
-      localTypingStateRef.current = true;
+      localTypingStateRef.current = sendTypingState(threadId, true);
     }
 
-    startLocalTypingHeartbeat(threadId);
+    if (localTypingStateRef.current) {
+      startLocalTypingHeartbeat(threadId);
+    }
   }
 
   function handleEmojiSelect(emojiData) {

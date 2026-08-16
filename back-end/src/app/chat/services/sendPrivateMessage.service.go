@@ -51,15 +51,6 @@ func SendPrivateMessage(senderID, recipientID, content, imagePath string) (strin
 		return "", err
 	}
 
-	recipientFollowsSender, err := repo.IsFollowing(recipientID, senderID)
-	if err != nil {
-		return "", err
-	}
-	recipientPublic, err := repo.IsUserPublic(recipientID)
-	if err != nil {
-		return "", err
-	}
-
 	payload := map[string]any{
 		"id":           messageID,
 		"sender_id":    senderID,
@@ -68,9 +59,7 @@ func SendPrivateMessage(senderID, recipientID, content, imagePath string) (strin
 		"image_path":   imagePath,
 	}
 
-	if recipientFollowsSender || recipientPublic {
-		ws.GlobalHub().SendToUser(recipientID, "chat:private:new", payload)
-	}
+	ws.GlobalHub().SendToUser(recipientID, "chat:private:new", payload)
 
 	if recipientConversation, err := repo.GetPrivateConversationSummary(recipientID, senderID); err == nil {
 		ws.GlobalHub().SendToUser(recipientID, "chat:private:conversation-updated", recipientConversation)

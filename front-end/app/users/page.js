@@ -21,28 +21,33 @@ async function parseResponse(response) {
   }
 }
 
-function UserAvatar({ avatarPath, label }) {
+function UserAvatar({ avatarPath, label, status }) {
   const [hasImageError, setHasImageError] = useState(false);
   const normalizedPath = avatarPath?.trim();
+  const normalizedStatus = String(status || "offline").toLowerCase();
+  const statusClassName = normalizedStatus === "online" ? "bg-emerald-400" : "bg-[#ff3b5f]";
+  const statusLabel = normalizedStatus === "online" ? "Online" : "Offline";
 
   if (normalizedPath && !hasImageError) {
     return (
-      <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+      <span className="relative inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
         <img
           src={normalizeImagePath(normalizedPath)}
           alt={label}
           onError={() => setHasImageError(true)}
           className="h-24 w-24 rounded-full border-4 border-black object-cover"
         />
+        <span className={`absolute bottom-1 right-1 h-4 w-4 rounded-full border-[3px] border-black ${statusClassName}`} aria-label={statusLabel} title={statusLabel} />
       </span>
     );
   }
 
   return (
-    <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
+    <span className="relative inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px] shadow-[0_14px_38px_rgba(0,0,0,0.35)]">
       <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-black bg-white text-2xl font-semibold text-black">
         {getInitial(label)}
       </div>
+      <span className={`absolute bottom-1 right-1 h-4 w-4 rounded-full border-[3px] border-black ${statusClassName}`} aria-label={statusLabel} title={statusLabel} />
     </span>
   );
 }
@@ -234,7 +239,13 @@ export default function UsersPage() {
         }
 
         if (!ignore) {
-          setUsers(payload?.data?.users || []);
+          const nextUsers = payload?.data?.users || [];
+          setUsers(nextUsers);
+          setRequestedUserIds(
+            nextUsers
+              .filter((user) => Number(user.is_follow_request_pending) === 1)
+              .map((user) => user.id)
+          );
           setNextCursor(payload?.data?.next_cursor || "");
         }
       } catch (error) {
@@ -257,6 +268,20 @@ export default function UsersPage() {
       ignore = true;
     };
   }, [activeQuery]);
+
+  useEffect(() => {
+    function handlePresenceChange(event) {
+      const userId = event.detail?.user_id;
+      const status = event.detail?.status;
+      if (!userId || !status) return;
+      setUsers((currentUsers) =>
+        currentUsers.map((user) => (user.id === userId ? { ...user, status } : user))
+      );
+    }
+
+    window.addEventListener("social:presence", handlePresenceChange);
+    return () => window.removeEventListener("social:presence", handlePresenceChange);
+  }, []);
 
   useEffect(() => {
     const usersToHydrate = users.filter(needsProfileHydration).slice(0, 12);
@@ -361,6 +386,13 @@ export default function UsersPage() {
 
         return mergedUsers;
       });
+      setRequestedUserIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextUsers.forEach((user) => {
+          if (Number(user.is_follow_request_pending) === 1) nextIds.add(user.id);
+        });
+        return [...nextIds];
+      });
       setNextCursor(payload?.data?.next_cursor || "");
     } catch (error) {
       setErrorMessage(error.message || "Failed to load more users");
@@ -377,6 +409,13 @@ export default function UsersPage() {
       return;
     }
 
+    if (Number(user.is_following) === 1) {
+      const displayName = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.nickname || "this user";
+      if (!window.confirm(`Unfollow ${displayName}?`)) {
+        return;
+      }
+    }
+
     if (pendingFollowUserIdsRef.current.has(user.id)) {
       return;
     }
@@ -386,7 +425,7 @@ export default function UsersPage() {
     setErrorMessage("");
 
     try {
-      if (requestedUserIds.includes(user.id)) {
+      if (requestedUserIds.includes(user.id) || Number(user.is_follow_request_pending) === 1) {
         const cancelResponse = await fetch(`${API_BASE_URL}/api/follow-requests/${user.id}`, {
           method: "DELETE",
           credentials: "include",
@@ -398,6 +437,11 @@ export default function UsersPage() {
         }
 
         setRequestedUserIds((currentIds) => currentIds.filter((id) => id !== user.id));
+        setUsers((currentUsers) =>
+          currentUsers.map((currentUser) =>
+            currentUser.id === user.id ? { ...currentUser, is_follow_request_pending: 0 } : currentUser
+          )
+        );
         return;
       }
 
@@ -472,6 +516,11 @@ export default function UsersPage() {
       setRequestedUserIds((currentIds) =>
         currentIds.includes(user.id) ? currentIds : [...currentIds, user.id]
       );
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === user.id ? { ...currentUser, is_follow_request_pending: 1 } : currentUser
+        )
+      );
     } catch (error) {
       setErrorMessage(error.message || "Failed to update follow status");
     } finally {
@@ -485,8 +534,8 @@ export default function UsersPage() {
       return "Working...";
     }
 
-    if (requestedUserIds.includes(user.id)) {
-      return "Follow request pending";
+    if (requestedUserIds.includes(user.id) || Number(user.is_follow_request_pending) === 1) {
+      return "Requested";
     }
 
     if (Number(user.is_following) === 1) {
@@ -630,7 +679,7 @@ export default function UsersPage() {
                     </span>
                   ) : null}
                   <div className="flex h-24 w-full items-center justify-center">
-                    <UserAvatar avatarPath={user.avatar_path} label={displayName} />
+                    <UserAvatar avatarPath={user.avatar_path} label={displayName} status={user.status} />
                   </div>
 
                   <div className="w-full min-w-0 overflow-hidden px-1">
@@ -645,7 +694,7 @@ export default function UsersPage() {
                     onClick={(event) => handleFollowAction(event, user)}
                     disabled={pendingFollowUserIds.includes(user.id)}
                     className={`w-full max-w-full rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition disabled:cursor-not-allowed disabled:opacity-70 ${
-                      requestedUserIds.includes(user.id)
+                      requestedUserIds.includes(user.id) || Number(user.is_follow_request_pending) === 1
                         ? "border border-amber-300/35 bg-amber-300/12 text-amber-100 hover:bg-amber-300/18"
                         : Number(user.is_following) === 1
                           ? "border border-[#fe2c55]/35 bg-[#fe2c55]/12 text-white hover:bg-[#fe2c55]/18"

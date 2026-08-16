@@ -10,6 +10,7 @@ type JoinRequestResponse struct {
 	RequesterID       string    `json:"requester_id"`
 	RequesterNickname string    `json:"requester_nickname"`
 	AvatarPath        string    `json:"avatar_path"`
+	RequesterStatus   string    `json:"requester_status"`
 	CreatedAt         time.Time `json:"created_at"`
 }
 

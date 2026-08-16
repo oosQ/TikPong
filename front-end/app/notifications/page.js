@@ -156,6 +156,37 @@ function safeParsePayload(payload) {
   }
 }
 
+function getNotificationDedupeKey(notification) {
+  const data = safeParsePayload(notification?.payload);
+  switch (notification?.type) {
+    case "follow":
+    case "follow_request":
+      return data.from_user_id ? `${notification.type}:${data.from_user_id}` : null;
+    case "group_join_request":
+      return data.group_id && (data.requester_id || data.requester_user_id)
+        ? `${notification.type}:${data.group_id}:${data.requester_id || data.requester_user_id}`
+        : null;
+    case "group_invitation":
+      return data.group_id ? `${notification.type}:${data.group_id}` : null;
+    default:
+      return null;
+  }
+}
+
+function dedupeNotifications(items) {
+  const seenIds = new Set();
+  const seenKeys = new Set();
+  return items.filter((notification) => {
+    if (seenIds.has(notification.id)) return false;
+    seenIds.add(notification.id);
+    const key = getNotificationDedupeKey(notification);
+    if (!key) return true;
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+}
+
 function getNotificationDetail(notification) {
   const data = safeParsePayload(notification.payload);
 
@@ -300,7 +331,11 @@ export default function NotificationsPage() {
   const [markingReadById, setMarkingReadById] = useState({});
   const [filter, setFilter] = useState("all");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [canConnectSocket, setCanConnectSocket] = useState(false);
   const [invitationActionByGroupId, setInvitationActionByGroupId] = useState({});
+  const [followRequestActionById, setFollowRequestActionById] = useState({});
+  const [followRequestErrorById, setFollowRequestErrorById] = useState({});
+  const [pendingFollowRequesterIds, setPendingFollowRequesterIds] = useState([]);
 
   function handleOpenGeneralSidebar() {
     window.dispatchEvent(new Event("app-shell:open-nav"));
@@ -312,16 +347,24 @@ export default function NotificationsPage() {
       setPageError("");
 
       try {
-        const [data, countData] = await Promise.all([
+        const [data, countData, followRequestData] = await Promise.all([
           getJson(`${API_BASE_URL}/api/notifications?limit=${NOTIFICATION_LIMIT}`),
           getJson(`${API_BASE_URL}/api/notifications/unread-count`),
+          getJson(`${API_BASE_URL}/api/follow-requests?limit=100`),
         ]);
-        setNotifications(data?.notifications || []);
+        setNotifications(dedupeNotifications(data?.notifications || []));
         setNextCursor(data?.next_cursor || "");
         setUnreadCount(countData?.count ?? 0);
+        setPendingFollowRequesterIds(
+          (followRequestData?.requests || [])
+            .filter((request) => request.status === "pending")
+            .map((request) => request.from_user_id)
+        );
+        setCanConnectSocket(true);
       } catch (error) {
         const isUnauthorized = error?.status === 401 || /unauthorized|login/i.test(error?.message || "");
         setPageError(isUnauthorized ? "AUTH_REQUIRED" : error instanceof Error ? error.message : "Failed to load notifications");
+        setCanConnectSocket(false);
       } finally {
         setIsLoading(false);
       }
@@ -331,7 +374,7 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    if (pageError === "AUTH_REQUIRED") {
+    if (!canConnectSocket) {
       return undefined;
     }
 
@@ -369,13 +412,23 @@ export default function NotificationsPage() {
 
       if (payload?.type === "notification:new" && payload.data) {
         setNotifications((current) => {
-          if (current.some((n) => n.id === payload.data.id)) {
-            return current;
-          }
-
-          return [payload.data, ...current];
+          const nextKey = getNotificationDedupeKey(payload.data);
+          const retained = nextKey
+            ? current.filter((notification) => getNotificationDedupeKey(notification) !== nextKey)
+            : current;
+          return dedupeNotifications([payload.data, ...retained]);
         });
-        setUnreadCount((current) => current + 1);
+        getJson(`${API_BASE_URL}/api/notifications/unread-count`)
+          .then((data) => setUnreadCount(data?.count ?? 0))
+          .catch(() => {});
+        if (payload.data.type === "follow_request") {
+          const requesterId = safeParsePayload(payload.data.payload)?.from_user_id;
+          if (requesterId) {
+            setPendingFollowRequesterIds((current) =>
+              current.includes(requesterId) ? current : [...current, requesterId]
+            );
+          }
+        }
       }
     }
 
@@ -412,7 +465,7 @@ export default function NotificationsPage() {
         socketRef.current = null;
       }
     };
-  }, [pageError]);
+  }, [canConnectSocket]);
 
   async function handleLoadMore() {
     if (!nextCursor || isLoadingMore) {
@@ -426,9 +479,7 @@ export default function NotificationsPage() {
       const nextItems = data?.notifications || [];
 
       setNotifications((current) => {
-        const existingIds = new Set(current.map((n) => n.id));
-        const newItems = nextItems.filter((n) => !existingIds.has(n.id));
-        return [...current, ...newItems];
+        return dedupeNotifications([...current, ...nextItems]);
       });
       setNextCursor(data?.next_cursor || "");
     } catch {
@@ -495,6 +546,30 @@ export default function NotificationsPage() {
       if (notificationId) handleMarkAsRead(notificationId);
     } catch {
       setInvitationActionByGroupId((current) => ({ ...current, [groupId]: null }));
+    }
+  }
+
+  async function handleFollowRequestResponse(notification, action) {
+    const data = safeParsePayload(notification.payload);
+    const requesterId = data?.from_user_id;
+    if (!requesterId || followRequestActionById[notification.id]) return;
+
+    setFollowRequestErrorById((current) => ({ ...current, [notification.id]: "" }));
+    setFollowRequestActionById((current) => ({ ...current, [notification.id]: `${action}ing` }));
+    try {
+      await getJson(`${API_BASE_URL}/api/follow-requests/${requesterId}/${action}`, { method: "POST" });
+      setFollowRequestActionById((current) => ({
+        ...current,
+        [notification.id]: action === "accept" ? "accepted" : "declined",
+      }));
+      setPendingFollowRequesterIds((current) => current.filter((id) => id !== requesterId));
+      if (!notification.is_read) await handleMarkAsRead(notification.id);
+    } catch (error) {
+      setFollowRequestActionById((current) => ({ ...current, [notification.id]: "" }));
+      setFollowRequestErrorById((current) => ({
+        ...current,
+        [notification.id]: error.message || "Failed to respond to follow request",
+      }));
     }
   }
 
@@ -577,7 +652,55 @@ export default function NotificationsPage() {
                 const href = getNotificationHref(notification);
 
                 return (
-                notification.type === "group_invitation" ? (() => {
+                notification.type === "follow_request" ? (() => {
+                  const data = safeParsePayload(notification.payload);
+                  const actionState = followRequestActionById[notification.id];
+                  const isDone = actionState === "accepted" || actionState === "declined";
+                  const isPending = pendingFollowRequesterIds.includes(data?.from_user_id);
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`flex w-full items-start gap-4 px-5 py-4 text-left sm:px-8 ${notification.is_read ? "opacity-65" : "bg-white/[0.02]"}`}
+                    >
+                      {getNotificationIcon(notification.type)}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-semibold text-white">{notification.title}</p>
+                          <span className="shrink-0 text-[11px] text-white/38">{formatRelativeDate(notification.created_at)}</span>
+                        </div>
+                        <p className="mt-1 text-sm leading-relaxed text-white/55">{notification.message}</p>
+                        {detail ? <p className="mt-1 truncate text-xs text-white/35">{detail}</p> : null}
+                        {!isDone && isPending ? (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleFollowRequestResponse(notification, "accept")}
+                              disabled={Boolean(actionState)}
+                              className="rounded-full bg-[#fe2c55] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {actionState === "accepting" ? "Accepting..." : "Accept"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFollowRequestResponse(notification, "reject")}
+                              disabled={Boolean(actionState)}
+                              className="rounded-full border border-white/12 bg-white/[0.04] px-4 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {actionState === "rejecting" ? "Declining..." : "Decline"}
+                            </button>
+                          </div>
+                        ) : isDone ? (
+                          <p className="mt-2 text-xs font-medium capitalize text-white/45">{actionState}</p>
+                        ) : (
+                          <p className="mt-2 text-xs text-white/38">Request no longer pending</p>
+                        )}
+                        {followRequestErrorById[notification.id] ? (
+                          <p className="mt-2 text-xs text-red-300">{followRequestErrorById[notification.id]}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })() : notification.type === "group_invitation" ? (() => {
                   const data = safeParsePayload(notification.payload);
                   const groupId = data?.group_id;
                   const actionState = invitationActionByGroupId[groupId];

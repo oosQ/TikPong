@@ -81,6 +81,7 @@ func ListJoinRequests(groupID, cursor string, limit int) (*dto.ListJoinRequestsR
 			gjr.requester_id,
 			u.nickname,
 			COALESCE(u.avatar_path, ''),
+			COALESCE(u.status, 'offline'),
 			gjr.created_at
 		FROM group_join_requests gjr
 		JOIN groups g ON g.id = gjr.group_id
@@ -119,6 +120,7 @@ func ListJoinRequests(groupID, cursor string, limit int) (*dto.ListJoinRequestsR
 			&item.RequesterID,
 			&item.RequesterNickname,
 			&item.AvatarPath,
+			&item.RequesterStatus,
 			&item.CreatedAt,
 		); err != nil {
 			return nil, err

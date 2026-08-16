@@ -24,7 +24,7 @@ func Init() {
 		}
 	}))
 
-	http.HandleFunc("/api/posts/explore", middleware.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/posts/explore", middleware.WithOptionalAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			handlers.GetExplorePostsHandler(w, r)

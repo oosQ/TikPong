@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -15,6 +16,9 @@ var DB *sql.DB
 func InitDB() {
 	var err error
 	dbPath := "data/database.db"
+	if configuredPath := strings.TrimSpace(os.Getenv("DB_PATH")); configuredPath != "" {
+		dbPath = configuredPath
+	}
 
 	isNewDatabase, err := isNewSQLiteDatabase(dbPath)
 	if err != nil {
@@ -48,6 +52,11 @@ func InitDB() {
 		log.Fatal("Error running migrations:", err)
 	}
 
+	// Presence is process-local. Clear rows left online by an unclean shutdown.
+	if _, err = DB.Exec(`UPDATE users SET status = 'offline' WHERE status != 'offline'`); err != nil {
+		log.Fatal("Error resetting user presence:", err)
+	}
+
 	go cleanupExpiredSessions()
 }
 
@@ -78,6 +87,7 @@ func cleanupUploadedImages() error {
 	uploadDirs := []string{
 		"uploads/avatars",
 		"uploads/comments",
+		"uploads/messages",
 		"uploads/posts",
 	}
 

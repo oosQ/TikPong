@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	chatrepo "social-network/src/app/chat/repo"
+	groupshared "social-network/src/app/group/shared"
 	database "social-network/src/db"
 	"social-network/src/middleware"
 	"time"
@@ -21,6 +22,11 @@ type inboundEnvelope struct {
 type privateTypingEvent struct {
 	RecipientID string `json:"recipient_id"`
 	IsTyping    bool   `json:"is_typing"`
+}
+
+type groupTypingEvent struct {
+	GroupID  string `json:"group_id"`
+	IsTyping bool   `json:"is_typing"`
 }
 
 const (
@@ -124,6 +130,8 @@ func handleInboundMessage(userID string, payload []byte) error {
 	switch message.Type {
 	case "chat:private:typing":
 		return handlePrivateTypingEvent(userID, message.Data)
+	case "chat:group:typing":
+		return handleGroupTypingEvent(userID, message.Data)
 	default:
 		return errors.New("unsupported event type")
 	}
@@ -160,25 +168,41 @@ func handlePrivateTypingEvent(senderID string, payload json.RawMessage) error {
 		return errors.New("you can only message users you follow or who follow you")
 	}
 
-	recipientFollowsSender, err := chatrepo.IsFollowing(event.RecipientID, senderID)
-	if err != nil {
-		return err
-	}
-	recipientPublic, err := chatrepo.IsUserPublic(event.RecipientID)
-	if err != nil {
-		return err
-	}
-
-	if !recipientFollowsSender && !recipientPublic {
-		return nil
-	}
-
 	GlobalHub().SendToUser(event.RecipientID, "chat:private:typing", map[string]any{
 		"sender_id":    senderID,
 		"recipient_id": event.RecipientID,
 		"is_typing":    event.IsTyping,
 	})
 
+	return nil
+}
+
+func handleGroupTypingEvent(senderID string, payload json.RawMessage) error {
+	var event groupTypingEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return err
+	}
+	if event.GroupID == "" {
+		return errors.New("invalid group")
+	}
+
+	isMember, err := groupshared.IsMember(event.GroupID, senderID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return errors.New("only group members can send typing events")
+	}
+
+	memberIDs, err := groupshared.GetGroupMemberIDs(event.GroupID)
+	if err != nil {
+		return err
+	}
+	GlobalHub().SendToUsers(memberIDs, "chat:group:typing", map[string]any{
+		"group_id":  event.GroupID,
+		"sender_id": senderID,
+		"is_typing": event.IsTyping,
+	})
 	return nil
 }
 

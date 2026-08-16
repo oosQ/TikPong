@@ -8,6 +8,8 @@ import { normalizeImagePath } from "@/app/posts/_components/post-card";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8433";
 const GROUP_LIMIT = 50;
+const GROUP_TYPING_IDLE_MS = 1800;
+const GROUP_TYPING_REMOTE_TIMEOUT_MS = 4000;
 const DEFAULT_TAB_OPTIONS = [
   { id: "members", label: "Members" },
   { id: "posts", label: "Posts" },
@@ -110,6 +112,23 @@ function formatLongDate(value) {
   }).format(date);
 }
 
+function formatCreatedDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 function getInitial(label) {
   const value = String(label || "").trim();
   if (!value) {
@@ -139,22 +158,56 @@ function GroupAvatar({ avatarPath, label, sizeClassName = "h-12 w-12 text-sm" })
   );
 }
 
-function UserAvatar({ avatarPath, label }) {
+function UserAvatar({ avatarPath, label, status }) {
   const src = normalizeImagePath(avatarPath || "");
+  const normalizedStatus = String(status || "offline").toLowerCase();
+  const isOnline = normalizedStatus === "online";
+  const statusLabel = isOnline ? "Online" : "Offline";
+  const statusDot = (
+    <span
+      className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${isOnline ? "bg-emerald-400" : "bg-[#ff3b5f]"}`}
+      aria-label={statusLabel}
+      title={statusLabel}
+    />
+  );
 
   if (src) {
     return (
-      <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
+      <span className="relative inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
         <img src={src} alt={label} className="h-10 w-10 rounded-full border-2 border-black object-cover" />
+        {statusDot}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
+    <span className="relative inline-flex shrink-0 rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[2px]">
       <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-black bg-white text-sm font-semibold text-black">
         {getInitial(label)}
       </div>
+      {statusDot}
+    </span>
+  );
+}
+
+function ChatAvatar({ avatarPath, label }) {
+  const src = normalizeImagePath(avatarPath || "");
+  if (src) {
+    return <img src={src} alt={label} className="h-9 w-9 shrink-0 rounded-full border border-white/10 object-cover" />;
+  }
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-xs font-semibold text-white">
+      {getInitial(label)}
+    </span>
+  );
+}
+
+function GroupTypingDots() {
+  return (
+    <span className="flex h-5 items-center gap-1" aria-label="Typing">
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/75 [animation-delay:-300ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/60 [animation-delay:-150ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/45" />
     </span>
   );
 }
@@ -238,6 +291,14 @@ function MemberIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-3.5 w-3.5">
+      <path d="M7 4v3M17 4v3M4.5 9.5h15M6.5 6h11A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-9A2.5 2.5 0 0 1 6.5 6Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -331,22 +392,22 @@ function SharedProfileCard({ label, url, userId, isOwnMessage }) {
       className={`flex w-[260px] items-center gap-3 overflow-hidden rounded-xl border px-3 py-3 transition ${
         isOwnMessage
           ? "border-white/15 bg-white/8 hover:bg-white/12"
-          : "border-black/10 bg-black/5 hover:bg-black/10"
+          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
       }`}
     >
       {avatarPath ? (
         <img src={normalizeImagePath(avatarPath)} alt={displayName} className="h-10 w-10 shrink-0 rounded-full object-cover" />
       ) : (
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-          isOwnMessage ? "bg-white/15 text-white" : "bg-black/10 text-black"
+          isOwnMessage ? "bg-white/15 text-white" : "bg-white/10 text-white"
         }`}>{initial}</div>
       )}
       <div className="min-w-0">
         <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${
-          isOwnMessage ? "text-white/40" : "text-black/35"
+          isOwnMessage ? "text-white/40" : "text-white/40"
         }`}>Shared Profile</p>
         <p className={`truncate text-sm font-semibold ${
-          isOwnMessage ? "text-white" : "text-black"
+          isOwnMessage ? "text-white" : "text-white"
         }`}>{displayName}</p>
       </div>
     </a>
@@ -389,7 +450,7 @@ function SharedPostCard({ label, url, postId, isOwnMessage }) {
       className={`block w-[260px] overflow-hidden rounded-xl border transition ${
         isOwnMessage
           ? "border-white/15 bg-white/8 hover:bg-white/12"
-          : "border-black/10 bg-black/5 hover:bg-black/10"
+          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
       }`}
     >
       <div className="h-[140px] w-full overflow-hidden bg-black/20">
@@ -403,10 +464,10 @@ function SharedPostCard({ label, url, postId, isOwnMessage }) {
       </div>
       <div className="px-3 pb-3 pt-2">
         <p className={`mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
-          isOwnMessage ? "text-white/40" : "text-black/35"
+          isOwnMessage ? "text-white/40" : "text-white/40"
         }`}>Shared Post</p>
         <p className={`line-clamp-2 text-sm font-semibold leading-5 ${
-          isOwnMessage ? "text-white" : "text-black"
+          isOwnMessage ? "text-white" : "text-white"
         }`}>{postTitle}</p>
       </div>
     </a>
@@ -427,6 +488,9 @@ export default function GroupsPage() {
   const activeTabRef = useRef("members");
   const membersByGroupIdRef = useRef({});
   const chatByGroupIdRef = useRef({});
+  const groupTypingStopTimeoutRef = useRef(null);
+  const groupTypingGroupRef = useRef("");
+  const remoteGroupTypingTimeoutsRef = useRef(new Map());
   const [currentUser, setCurrentUser] = useState(null);
   const [groups, setGroups] = useState([]);
   const [joinRequestStatusByGroupId, setJoinRequestStatusByGroupId] = useState({});
@@ -482,6 +546,7 @@ export default function GroupsPage() {
   const [chatByGroupId, setChatByGroupId] = useState({});
   const [chatLoadingByGroupId, setChatLoadingByGroupId] = useState({});
   const [chatErrorByGroupId, setChatErrorByGroupId] = useState({});
+  const [typingUserIdsByGroupId, setTypingUserIdsByGroupId] = useState({});
   const [eventsByGroupId, setEventsByGroupId] = useState({});
   const [eventsLoadingByGroupId, setEventsLoadingByGroupId] = useState({});
   const [eventsErrorByGroupId, setEventsErrorByGroupId] = useState({});
@@ -544,6 +609,78 @@ export default function GroupsPage() {
   useEffect(() => {
     chatByGroupIdRef.current = chatByGroupId;
   }, [chatByGroupId]);
+
+  function sendGroupTypingState(groupId, isTyping) {
+    const socket = socketRef.current;
+    if (!groupId || !socket || socket.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify({
+      type: "chat:group:typing",
+      data: { group_id: groupId, is_typing: isTyping },
+    }));
+    return true;
+  }
+
+  function stopGroupTyping(groupId = groupTypingGroupRef.current) {
+    if (groupTypingStopTimeoutRef.current) {
+      window.clearTimeout(groupTypingStopTimeoutRef.current);
+      groupTypingStopTimeoutRef.current = null;
+    }
+    if (groupId) sendGroupTypingState(groupId, false);
+    groupTypingGroupRef.current = "";
+  }
+
+  function handleGroupDraftChange(nextValue) {
+    setChatDraft(nextValue);
+    const groupId = selectedGroupIdRef.current;
+    if (!groupId || activeTabRef.current !== "chat") return;
+
+    if (!nextValue.trim()) {
+      stopGroupTyping(groupId);
+      return;
+    }
+
+    if (groupTypingGroupRef.current && groupTypingGroupRef.current !== groupId) {
+      stopGroupTyping(groupTypingGroupRef.current);
+    }
+    if (sendGroupTypingState(groupId, true)) groupTypingGroupRef.current = groupId;
+
+    if (groupTypingStopTimeoutRef.current) window.clearTimeout(groupTypingStopTimeoutRef.current);
+    groupTypingStopTimeoutRef.current = window.setTimeout(() => stopGroupTyping(groupId), GROUP_TYPING_IDLE_MS);
+  }
+
+  function updateRemoteGroupTyping(groupId, senderId, isTyping) {
+    if (!groupId || !senderId || senderId === currentUserRef.current?.id) return;
+    const timeoutKey = `${groupId}:${senderId}`;
+    const existingTimeout = remoteGroupTypingTimeoutsRef.current.get(timeoutKey);
+    if (existingTimeout) window.clearTimeout(existingTimeout);
+
+    setTypingUserIdsByGroupId((current) => {
+      const nextIds = new Set(current[groupId] || []);
+      if (isTyping) nextIds.add(senderId);
+      else nextIds.delete(senderId);
+      return { ...current, [groupId]: [...nextIds] };
+    });
+
+    if (isTyping) {
+      const timeoutId = window.setTimeout(() => updateRemoteGroupTyping(groupId, senderId, false), GROUP_TYPING_REMOTE_TIMEOUT_MS);
+      remoteGroupTypingTimeoutsRef.current.set(timeoutKey, timeoutId);
+    } else {
+      remoteGroupTypingTimeoutsRef.current.delete(timeoutKey);
+    }
+  }
+
+  useEffect(() => {
+    const activeTypingGroup = groupTypingGroupRef.current;
+    if (activeTypingGroup && (activeTypingGroup !== selectedGroupId || activeTab !== "chat")) {
+      stopGroupTyping(activeTypingGroup);
+    }
+  }, [activeTab, selectedGroupId]);
+
+  useEffect(() => () => {
+    stopGroupTyping();
+    remoteGroupTypingTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    remoteGroupTypingTimeoutsRef.current.clear();
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -791,7 +928,17 @@ export default function GroupsPage() {
         return;
       }
 
+      if (payload.type === "chat:group:typing") {
+        updateRemoteGroupTyping(
+          payload.data?.group_id,
+          payload.data?.sender_id,
+          Boolean(payload.data?.is_typing)
+        );
+        return;
+      }
+
       if (payload.type === "chat:group:new") {
+        updateRemoteGroupTyping(payload.data?.group_id, payload.data?.sender_id, false);
         appendRealtimeGroupMessage(payload.data);
 
         if (!payload.data?.group_id || payload.data.group_id !== selectedGroupIdRef.current || activeTabRef.current !== "chat") {
@@ -917,7 +1064,7 @@ export default function GroupsPage() {
     async function loadActiveTab() {
       const groupId = selectedGroup.id;
 
-      if (activeTab === "members" && !membersByGroupId[groupId] && !membersLoadingByGroupId[groupId]) {
+      if ((activeTab === "members" || activeTab === "chat") && !membersByGroupId[groupId] && !membersLoadingByGroupId[groupId]) {
         setMembersLoadingByGroupId((current) => ({ ...current, [groupId]: true }));
         setMembersErrorByGroupId((current) => ({ ...current, [groupId]: "" }));
         try {
@@ -1062,7 +1209,7 @@ export default function GroupsPage() {
       const selectionStart = input.selectionStart ?? chatDraft.length;
       const selectionEnd = input.selectionEnd ?? chatDraft.length;
       const nextValue = `${chatDraft.slice(0, selectionStart)}${emoji}${chatDraft.slice(selectionEnd)}`;
-      setChatDraft(nextValue);
+      handleGroupDraftChange(nextValue);
 
       window.requestAnimationFrame(() => {
         input.focus();
@@ -1070,7 +1217,7 @@ export default function GroupsPage() {
         input.setSelectionRange(nextCursorPosition, nextCursorPosition);
       });
     } else {
-      setChatDraft(`${chatDraft}${emoji}`);
+      handleGroupDraftChange(`${chatDraft}${emoji}`);
     }
 
     setIsEmojiPickerOpen(false);
@@ -1141,6 +1288,7 @@ export default function GroupsPage() {
       return;
     }
 
+    stopGroupTyping(selectedGroup.id);
     setIsSendingGroupMessage(true);
     setChatErrorByGroupId((current) => ({ ...current, [selectedGroup.id]: "" }));
 
@@ -1530,7 +1678,7 @@ export default function GroupsPage() {
     const eventTime = createEventTime.trim();
 
     if (!title || !description || !eventTime) {
-      setCreateEventError("Title, description, and date are required");
+      setCreateEventError("Title, description, and date/time are required");
       return;
     }
     if (isCreatingEvent) return;
@@ -1794,7 +1942,7 @@ export default function GroupsPage() {
           {members.map((member) => (
             <div key={member.user_id} className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
-                <UserAvatar avatarPath={member.avatar_path} label={member.nickname || member.user_id} />
+                <UserAvatar avatarPath={member.avatar_path} label={member.nickname || member.user_id} status={member.status} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{member.nickname || member.user_id}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.22em] text-white/38">{member.role}</p>
@@ -1883,7 +2031,7 @@ export default function GroupsPage() {
                       />
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <UserAvatar avatarPath={post.avatar_path} label={post.nickname || post.user_id} />
+                  <UserAvatar avatarPath={post.avatar_path} label={post.nickname || post.user_id} status={post.status} />
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-white">{post.nickname || post.user_id}</p>
                             <p className="text-xs text-white/55">{formatLongDate(post.created_at)}</p>
@@ -1903,7 +2051,7 @@ export default function GroupsPage() {
                       {post.content ? <p className="whitespace-pre-wrap text-xl leading-9 text-white/90">{post.content}</p> : null}
                     </div>
                     <div className="absolute bottom-6 left-6 flex items-center gap-3">
-                      <UserAvatar avatarPath={post.avatar_path} label={post.nickname || post.user_id} />
+                      <UserAvatar avatarPath={post.avatar_path} label={post.nickname || post.user_id} status={post.status} />
                       <div className="min-w-0 text-left">
                         <p className="truncate text-sm font-semibold text-white">{post.nickname || post.user_id}</p>
                         <p className="text-xs text-white/40">{formatLongDate(post.created_at)}</p>
@@ -1929,6 +2077,15 @@ export default function GroupsPage() {
     }
 
     const messages = chatByGroupId[selectedGroup.id] || [];
+    const members = membersByGroupId[selectedGroup.id] || [];
+    const typingUsers = (typingUserIdsByGroupId[selectedGroup.id] || []).map((userId) => {
+      const member = members.find((item) => item.user_id === userId);
+      return {
+        user_id: userId,
+        nickname: member?.nickname || `User ${userId.slice(0, 6)}`,
+        avatar_path: member?.avatar_path || "",
+      };
+    });
 
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-black">
@@ -1945,10 +2102,13 @@ export default function GroupsPage() {
                 const isOwnMessage = message.sender_id === currentUser?.id;
 
                 return (
-                  <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[320px] rounded-2xl px-4 py-2.5 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.25)] ${isOwnMessage ? "bg-white/12 text-white" : "bg-white text-black"}`}>
+                  <div key={message.id} className={`flex items-end gap-2.5 ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+                    {!isOwnMessage ? (
+                      <ChatAvatar avatarPath={message.avatar_path} label={message.nickname || message.sender_id} />
+                    ) : null}
+                    <div className={`max-w-[min(78vw,380px)] rounded-2xl border px-4 py-3 text-sm shadow-[0_12px_32px_rgba(0,0,0,0.3)] ${isOwnMessage ? "rounded-br-md border-[#fe2c55]/25 bg-[#fe2c55]/18 text-white" : "rounded-bl-md border-white/10 bg-[#181818] text-white"}`}>
                       {!isOwnMessage ? (
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-black/55">{message.nickname || message.sender_id}</p>
+                        <p className="mb-1.5 text-xs font-semibold text-[#ff7893]">{message.nickname || message.sender_id}</p>
                       ) : null}
                       {parseSharedPost(message.content)
                         ? <SharedPostCard label={parseSharedPost(message.content).label} url={parseSharedPost(message.content).url} postId={parseSharedPost(message.content).postId} isOwnMessage={isOwnMessage} />
@@ -1969,19 +2129,39 @@ export default function GroupsPage() {
                           />
                         </button>
                       ) : null}
-                      <p className={`mt-1 text-right text-[11px] ${isOwnMessage ? "text-white/50" : "text-black/40"}`}>
+                      <p className="mt-1.5 text-right text-[11px] text-white/38">
                         {formatRelativeDate(message.created_at)}
                       </p>
                     </div>
+                    {isOwnMessage ? (
+                      <ChatAvatar avatarPath={currentUser?.avatar_path} label={currentUser?.nickname || "You"} />
+                    ) : null}
                   </div>
                 );
               })}
             </div>
-          ) : (
+          ) : !typingUsers.length ? (
             <div className="flex flex-1 items-center justify-center">
               <MessageOutlineIcon />
             </div>
-          )}
+          ) : null}
+          {typingUsers.length ? (
+            <div className="flex items-end gap-2.5 pt-1">
+              <div className="flex -space-x-2">
+                {typingUsers.slice(0, 3).map((user) => (
+                  <ChatAvatar key={user.user_id} avatarPath={user.avatar_path} label={user.nickname} />
+                ))}
+              </div>
+              <div className="rounded-2xl rounded-bl-md border border-white/10 bg-[#181818] px-4 py-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.3)]">
+                <p className="mb-1 text-xs text-white/48">
+                  {typingUsers.length === 1
+                    ? `${typingUsers[0].nickname} is typing`
+                    : `${typingUsers.slice(0, 2).map((user) => user.nickname).join(" and ")}${typingUsers.length > 2 ? ` +${typingUsers.length - 2}` : ""} are typing`}
+                </p>
+                <GroupTypingDots />
+              </div>
+            </div>
+          ) : null}
           </div>
         </div>
         <div className="border-t border-white/10 px-5 py-4 sm:px-8">
@@ -2047,7 +2227,7 @@ export default function GroupsPage() {
                   ref={groupDraftInputRef}
                   type="text"
                   value={chatDraft}
-                  onChange={(event) => setChatDraft(event.target.value)}
+                  onChange={(event) => handleGroupDraftChange(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
@@ -2222,7 +2402,7 @@ export default function GroupsPage() {
             <article key={request.id} className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
-                  <UserAvatar avatarPath={request.avatar_path} label={request.requester_nickname || request.requester_id} />
+                  <UserAvatar avatarPath={request.avatar_path} label={request.requester_nickname || request.requester_id} status={request.requester_status} />
                   <div className="min-w-0">
                     <p className="truncate text-base font-semibold text-white">{request.requester_nickname || request.requester_id}</p>
                     <p className="mt-1 text-xs uppercase tracking-[0.22em] text-white/38">Requested {formatLongDate(request.created_at)}</p>
@@ -2370,7 +2550,7 @@ export default function GroupsPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredGroups.map((group) => {
               const groupMemberCount = getGroupMemberCount(group);
-              const createdLabel = formatRelativeDate(group.created_at || group.last_activity);
+              const createdLabel = formatCreatedDate(group.created_at || group.last_activity);
               const joinRequestStatus = joinRequestStatusByGroupId[group.id] || (group.is_member ? "member" : "idle");
               const isJoinRequestLoading = Boolean(joinRequestLoadingByGroupId[group.id]);
               const joinRequestError = joinRequestErrorByGroupId[group.id] || "";
@@ -2402,7 +2582,8 @@ export default function GroupsPage() {
                         </span>
                       ) : null}
                       {createdLabel ? (
-                        <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                          <CalendarIcon />
                           {createdLabel}
                         </span>
                       ) : null}
@@ -2461,15 +2642,15 @@ export default function GroupsPage() {
   return (
     <main className={`${selectedGroup ? "h-dvh overflow-hidden" : "min-h-screen overflow-x-hidden"} bg-[radial-gradient(circle_at_top,#171717_0%,#060606_48%,#020202_100%)] text-white ${selectedGroup ? "px-0 py-0" : "px-4 pb-16 pt-20 min-[1200px]:pl-[288px] min-[1200px]:pr-8 min-[1200px]:pt-8"}`}>
       {selectedGroup ? (
-        <section className="flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-black">
-              <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-8 sm:py-6">
-                <div className="flex flex-col gap-6">
+        <section className="flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden bg-[#050505]">
+              <div className="shrink-0 border-b border-white/10 bg-[linear-gradient(180deg,#111_0%,#070707_100%)] px-4 py-4 sm:px-8 sm:py-6">
+                <div className="flex flex-col gap-5">
                   <div className="flex items-start justify-between gap-6">
                     <div className="flex min-w-0 flex-1 items-start gap-4">
                       <button
                         type="button"
                         onClick={() => setSelectedGroupId("")}
-                        className="flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-white/78 transition hover:bg-white/10 hover:text-white"
+                        className="ml-12 flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-sm font-semibold text-white/78 transition hover:bg-white/10 hover:text-white min-[1200px]:ml-0"
                         aria-label="Back to groups"
                       >
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
@@ -2477,21 +2658,30 @@ export default function GroupsPage() {
                         </svg>
                         <span className="hidden min-[420px]:inline">Groups</span>
                       </button>
-                      <GroupAvatar avatarPath={headerAvatar} label={headerTitle} sizeClassName="h-12 w-12 text-sm" />
-                      <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
-                        <p className="text-lg font-semibold leading-none text-white">{headerTitle}</p>
-                        <div className="max-h-20 max-w-2xl overflow-y-auto break-all text-sm leading-6 text-white/42 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <GroupAvatar avatarPath={headerAvatar} label={headerTitle} sizeClassName="h-14 w-14 text-base" />
+                      <div className="min-w-0 flex-1 space-y-3 pt-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="min-w-0 text-xl font-semibold leading-tight text-white sm:text-2xl">{headerTitle}</p>
+                          {memberCount !== null ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                              <MemberIcon />
+                              {formatMemberCount(memberCount)}
+                            </span>
+                          ) : null}
+                          {selectedGroupDetails?.created_at || selectedGroup?.created_at ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                              <CalendarIcon />
+                              {formatCreatedDate(selectedGroupDetails?.created_at || selectedGroup?.created_at)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="max-h-20 max-w-3xl overflow-y-auto break-words text-sm leading-6 text-white/48 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                           {headerDescription}
                         </div>
                       </div>
                     </div>
 
                     <div className="relative flex shrink-0 items-center gap-3 max-sm:hidden">
-                      {memberCount !== null || selectedGroup.is_member ? (
-                        <div className="hidden rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45 sm:block">
-                          {memberCount !== null ? `${formatMemberCount(memberCount)}${selectedGroup.is_member ? "  • Member access" : ""}` : "Member access"}
-                        </div>
-                      ) : null}
                       {isSelectedGroupCreator ? (
                         <div ref={groupMenuRef} className="relative">
                           <button
@@ -2619,7 +2809,7 @@ export default function GroupsPage() {
                     const isMember = (membersByGroupId[selectedGroup?.id] || []).some((m) => m.user_id === user.id);
                     return (
                       <div key={user.id} className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                        <UserAvatar avatarPath={user.avatar_path} label={user.nickname || user.id} />
+                        <UserAvatar avatarPath={user.avatar_path} label={user.nickname || user.id} status={user.status} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-white">{user.nickname || user.id}</p>
                           {user.first_name || user.last_name ? <p className="truncate text-xs text-white/45">{[user.first_name, user.last_name].filter(Boolean).join(" ")}</p> : null}
@@ -2653,7 +2843,7 @@ export default function GroupsPage() {
                   const key = `${inv.group_id}:${inv.invitee_id}`;
                   return (
                     <div key={inv.id} className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                      <UserAvatar avatarPath={inv.avatar_path} label={inv.invitee_nickname || inv.invitee_id} />
+                      <UserAvatar avatarPath={inv.avatar_path} label={inv.invitee_nickname || inv.invitee_id} status={inv.invitee_status} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-white">{inv.invitee_nickname || inv.invitee_id}</p>
                         <p className="text-xs text-white/38">Pending</p>
@@ -2895,11 +3085,10 @@ export default function GroupsPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-white/72">Date</span>
+                <span className="mb-2 block text-sm font-medium text-white/72">Date and time</span>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={createEventTime}
-                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setCreateEventTime(e.target.value)}
                   className="w-full rounded-[20px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none [color-scheme:dark]"
                 />

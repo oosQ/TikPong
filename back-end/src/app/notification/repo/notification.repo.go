@@ -15,6 +15,16 @@ func CreateNotification(id, userID, notificationType, title, message string, pay
 	return err
 }
 
+func DeleteUnreadMatchingNotifications(userID, notificationType string, payload *string) error {
+	_, err := database.DB.Exec(`
+		DELETE FROM notifications
+		WHERE user_id = ?
+		  AND type = ?
+		  AND COALESCE(payload, '') = COALESCE(?, '')
+	`, userID, notificationType, payload)
+	return err
+}
+
 func GetNotifications(userID string, unreadOnly bool, cursor string, limit int) (*dto.GetNotificationsResponse, error) {
 	query := `
 		SELECT id, type, title, message, COALESCE(payload, ''), is_read, created_at

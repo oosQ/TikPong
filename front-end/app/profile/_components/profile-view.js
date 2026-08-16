@@ -112,6 +112,14 @@ function ShareIcon() {
   );
 }
 
+function PrivateAccountLockIcon() {
+  return (
+    <svg viewBox="0 0 448 512" fill="currentColor" aria-hidden="true" className="h-10 w-10">
+      <path d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z" />
+    </svg>
+  );
+}
+
 function DotsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-5 w-5">
@@ -127,24 +135,34 @@ function renderProfileAvatar(profile, avatarPreviewUrl, isSelf, onAvatarClick) {
 }
 
 function ProfileAvatar({ profile, avatarPreviewUrl, isSelf, onAvatarClick }) {
-  const [hasImageError, setHasImageError] = useState(false);
+  const [failedAvatar, setFailedAvatar] = useState("");
   const avatar = avatarPreviewUrl || profile?.avatar_path;
+  const hasImageError = Boolean(avatar) && failedAvatar === avatar;
   const label = getDisplayName(profile) || profile?.id || "User";
-  useEffect(() => {
-    setHasImageError(false);
-  }, [avatar]);
-
+  const isOnline = String(profile?.status || "offline").toLowerCase() === "online";
+  const statusLabel = isOnline ? "Online" : "Offline";
+  const statusDot = (
+    <span
+      className={`absolute bottom-2 right-2 h-5 w-5 rounded-full border-[4px] border-black ${isOnline ? "bg-emerald-400" : "bg-[#ff3b5f]"}`}
+      aria-label={statusLabel}
+      title={statusLabel}
+    />
+  );
   const content = avatar && !hasImageError ? (
-    <span className="inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[3px] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+    <span className="relative inline-flex rounded-full bg-[linear-gradient(135deg,#fe2c55,#25f4ee)] p-[3px] shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
       <img
         src={normalizeImagePath(avatar)}
         alt={label}
-        onError={() => setHasImageError(true)}
+        onError={() => setFailedAvatar(avatar)}
         className="h-28 w-28 rounded-full border-4 border-black object-cover sm:h-32 sm:w-32"
       />
+      {statusDot}
     </span>
   ) : (
-    <AvatarFallback label={label} className="h-28 w-28 text-4xl sm:h-32 sm:w-32" />
+    <span className="relative inline-flex">
+      <AvatarFallback label={label} className="h-28 w-28 text-4xl sm:h-32 sm:w-32" />
+      {statusDot}
+    </span>
   );
 
   if (!isSelf || !onAvatarClick) {
@@ -440,6 +458,12 @@ export default function ProfileView({
   const isUnfollowAction = !isSelf && (followActionLabel === "Unfollow" || Number(profile?.is_following) === 1);
   const isFollowRequestPending = !isSelf && followActionLabel === "Follow request pending";
   const isBlockedProfile = !isSelf && Boolean(profile?.is_blocked);
+  const isPrivateContentLocked =
+    !isSelf &&
+    !isBlockedProfile &&
+    profile &&
+    !profile.is_public &&
+    Number(profile.is_following) !== 1;
   const connectionsLabel =
     activeConnectionsTab === "followers"
       ? "Followers"
@@ -837,7 +861,17 @@ export default function ProfileView({
               </div>
 
               <div className="mx-auto mt-4 max-w-5xl">
-                {isGridLoading ? (
+                {isPrivateContentLocked ? (
+                  <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white/75">
+                      <PrivateAccountLockIcon />
+                    </div>
+                    <h2 className="mt-5 text-xl font-semibold text-white">This account is private</h2>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-white/50">
+                      Follow this account to see their posts and reposts.
+                    </p>
+                  </div>
+                ) : isGridLoading ? (
                   <div className="flex min-h-80 items-center justify-center">
                     <span className="loading-spinner" aria-label="Loading posts" />
                   </div>

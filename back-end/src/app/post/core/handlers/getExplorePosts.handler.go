@@ -8,10 +8,10 @@ import (
 )
 
 func GetExplorePostsHandler(w http.ResponseWriter, r *http.Request) {
+	currentUserID := ""
 	userCtx, ok := r.Context().Value("user_data").(*models.UserContext)
-	if !ok || userCtx == nil || userCtx.ID == "" {
-		utils.SendError(w, "Unauthorized", http.StatusUnauthorized)
-		return
+	if ok && userCtx != nil {
+		currentUserID = userCtx.ID
 	}
 
 	cursor, limit, ok := utils.ParseCursorLimit(w, r)
@@ -19,7 +19,7 @@ func GetExplorePostsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	posts, err := services.GetExplorePosts(userCtx.ID, cursor, limit)
+	posts, err := services.GetExplorePosts(currentUserID, cursor, limit)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusInternalServerError)
 		return

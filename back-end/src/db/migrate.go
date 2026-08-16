@@ -7,33 +7,53 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	migrate "github.com/rubenv/sql-migrate"
 )
 
 const migrationDir = "src/db/migrations"
 
 func runMigrations(db *sql.DB) error {
-	source := &pairedFileMigrationSource{Dir: migrationDir}
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			id TEXT PRIMARY KEY,
+			applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+	`); err != nil {
+		return fmt.Errorf("prepare migrations table: %w", err)
+	}
+	if err := syncLegacyMigrationRecords(db); err != nil {
+		return err
+	}
 
-	if _, err := migrate.Exec(db, "sqlite3", source, migrate.Up); err != nil {
-		return fmt.Errorf("apply migrations: %w", err)
+	migrations, err := findPairedMigrations(migrationDir)
+	if err != nil {
+		return err
+	}
+
+	for _, migration := range migrations {
+		applied, err := isMigrationApplied(db, migration.id)
+		if err != nil {
+			return err
+		}
+		if applied {
+			continue
+		}
+
+		if err := applyMigration(db, migration); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-type pairedFileMigrationSource struct {
-	Dir string
-}
-
 type migrationFiles struct {
+	id       string
 	upPath   string
 	downPath string
 }
 
-func (s *pairedFileMigrationSource) FindMigrations() ([]*migrate.Migration, error) {
-	entries, err := os.ReadDir(s.Dir)
+func findPairedMigrations(dir string) ([]migrationFiles, error) {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("read migrations directory: %w", err)
 	}
@@ -53,7 +73,8 @@ func (s *pairedFileMigrationSource) FindMigrations() ([]*migrate.Migration, erro
 				files = &migrationFiles{}
 				filesByID[id] = files
 			}
-			files.upPath = filepath.Join(s.Dir, name)
+			files.id = id
+			files.upPath = filepath.Join(dir, name)
 		case strings.HasSuffix(name, ".down.sql"):
 			id := strings.TrimSuffix(name, ".down.sql")
 			files := filesByID[id]
@@ -61,7 +82,8 @@ func (s *pairedFileMigrationSource) FindMigrations() ([]*migrate.Migration, erro
 				files = &migrationFiles{}
 				filesByID[id] = files
 			}
-			files.downPath = filepath.Join(s.Dir, name)
+			files.id = id
+			files.downPath = filepath.Join(dir, name)
 		}
 	}
 
@@ -74,48 +96,67 @@ func (s *pairedFileMigrationSource) FindMigrations() ([]*migrate.Migration, erro
 	}
 
 	sort.Strings(ids)
-	migrations := make([]*migrate.Migration, 0, len(ids))
+	migrations := make([]migrationFiles, 0, len(ids))
 	for _, id := range ids {
-		migration, err := parsePairedMigration(id, filesByID[id])
-		if err != nil {
-			return nil, err
-		}
-		migrations = append(migrations, migration)
+		migrations = append(migrations, *filesByID[id])
 	}
 
 	return migrations, nil
 }
 
-func parsePairedMigration(id string, files *migrationFiles) (*migrate.Migration, error) {
-	upSQL, err := os.ReadFile(files.upPath)
+func syncLegacyMigrationRecords(db *sql.DB) error {
+	var legacyTable string
+	err := db.QueryRow("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'gorp_migrations'").Scan(&legacyTable)
+	if err == sql.ErrNoRows {
+		return nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("read up migration %s: %w", id, err)
+		return fmt.Errorf("check legacy migrations table: %w", err)
 	}
 
-	downSQL, err := os.ReadFile(files.downPath)
+	_, err = db.Exec(`
+		INSERT OR IGNORE INTO schema_migrations (id, applied_at)
+		SELECT id, applied_at FROM gorp_migrations;
+	`)
 	if err != nil {
-		return nil, fmt.Errorf("read down migration %s: %w", id, err)
+		return fmt.Errorf("sync legacy migrations: %w", err)
 	}
 
-	var content strings.Builder
-	writeMigrationSection(&content, "Up", upSQL)
-	content.WriteString("\n")
-	writeMigrationSection(&content, "Down", downSQL)
-
-	migration, err := migrate.ParseMigration(id, strings.NewReader(content.String()))
-	if err != nil {
-		return nil, fmt.Errorf("parse migration %s: %w", id, err)
-	}
-
-	return migration, nil
+	return nil
 }
 
-func writeMigrationSection(builder *strings.Builder, direction string, body []byte) {
-	builder.WriteString("-- +migrate ")
-	builder.WriteString(direction)
-	builder.WriteString("\n")
-	builder.Write(body)
-	if len(body) == 0 || body[len(body)-1] != '\n' {
-		builder.WriteString("\n")
+func isMigrationApplied(db *sql.DB, id string) (bool, error) {
+	var exists int
+	err := db.QueryRow("SELECT 1 FROM schema_migrations WHERE id = ?", id).Scan(&exists)
+	if err == nil {
+		return true, nil
 	}
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("check migration %s: %w", id, err)
+}
+
+func applyMigration(db *sql.DB, migration migrationFiles) error {
+	upSQL, err := os.ReadFile(migration.upPath)
+	if err != nil {
+		return fmt.Errorf("read up migration %s: %w", migration.id, err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin migration %s: %w", migration.id, err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(string(upSQL)); err != nil {
+		return fmt.Errorf("apply migration %s: %w", migration.id, err)
+	}
+
+	if _, err := tx.Exec("INSERT INTO schema_migrations (id) VALUES (?)", migration.id); err != nil {
+		return fmt.Errorf("record migration %s: %w", migration.id, err)
+	}
+
+	return tx.Commit()
 }

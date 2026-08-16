@@ -6,7 +6,7 @@ import (
 	"social-network/src/app/chat"
 	"social-network/src/app/group"
 	"social-network/src/app/notification"
-	 "social-network/src/app/post"
+	"social-network/src/app/post"
 	"social-network/src/app/user"
 	database "social-network/src/db"
 	"social-network/src/middleware"

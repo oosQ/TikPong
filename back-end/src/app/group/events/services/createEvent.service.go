@@ -24,9 +24,9 @@ func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string,
 		return "", errors.New("only group members can create events")
 	}
 
-	eventTime, err := time.Parse("2006-01-02", req.EventTime)
+	eventTime, err := parseEventTime(req.EventTime)
 	if err != nil {
-		return "", errors.New("event_time must be in YYYY-MM-DD format")
+		return "", errors.New("event_time must include a valid date and time")
 	}
 
 	eventID, err := utils.GenerateUUID()
@@ -55,4 +55,25 @@ func CreateEvent(groupID, creatorID string, req dto.CreateEventRequest) (string,
 	}
 
 	return eventID, nil
+}
+
+func parseEventTime(value string) (time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02T15:04",
+		"2006-01-02 15:04",
+		"2006-01-02",
+	}
+
+	var lastErr error
+	for _, format := range formats {
+		parsed, err := time.Parse(format, trimmed)
+		if err == nil {
+			return parsed, nil
+		}
+		lastErr = err
+	}
+
+	return time.Time{}, lastErr
 }

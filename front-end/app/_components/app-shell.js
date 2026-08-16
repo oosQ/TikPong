@@ -14,6 +14,58 @@ function buildWebSocketUrl(baseUrl) {
   return `${baseUrl}/ws`;
 }
 
+const NOTIFICATION_ICONS = {
+  follow_request: {
+    viewBox: "0 0 640 512",
+    path: "M96 128a128 128 0 1 1 256 0A128 128 0 1 1 96 128zM0 482.3C0 383.8 79.8 304 178.3 304h91.4C368.2 304 448 383.8 448 482.3c0 16.4-13.3 29.7-29.7 29.7H29.7C13.3 512 0 498.7 0 482.3zM504 312V248H440c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V136c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H552v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z",
+  },
+  private_message: {
+    viewBox: "0 0 512 512",
+    path: "M512 240c0 114.9-114.6 208-256 208c-37.1 0-72.3-6.4-104.1-17.9c-11.9 8.7-31.3 20.6-54.3 30.6C73.6 471.1 44.7 480 16 480c-6.5 0-12.3-3.9-14.8-9.9c-2.5-6-1.1-12.8 3.4-17.4c20.5-20.8 34.2-43.7 39.2-66.9C17.7 326.8 0 285.1 0 240C0 125.1 114.6 32 256 32s256 93.1 256 208z",
+  },
+  group_event: {
+    viewBox: "0 0 448 512",
+    path: "M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192z",
+  },
+  group_join_request: {
+    viewBox: "0 0 640 512",
+    path: "M96 128a128 128 0 1 1 256 0A128 128 0 1 1 96 128zM0 482.3C0 383.8 79.8 304 178.3 304h91.4C368.2 304 448 383.8 448 482.3c0 16.4-13.3 29.7-29.7 29.7H29.7C13.3 512 0 498.7 0 482.3zM504 312V248H440c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V136c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H552v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z",
+  },
+  group_invitation: {
+    viewBox: "0 0 512 512",
+    path: "M498.1 5.6c10.1 7 15.4 19.1 13.5 31.2l-64 416c-1.5 9.7-7.4 18.2-16 23s-18.9 5.4-28 1.6l-126.3-52.5-72.4 78.1c-8.9 9.7-22.9 12.8-35.2 8s-20.4-16.6-20.4-29.8V391.4c0-4 1.5-7.8 4.2-10.7L331.8 202.8c5.8-5.8 6-15.1.3-21s-15-6.2-21-.7L94.7 379.4 10.8 337.6C.9 332.7-5.4 322.8-5 311.8s7.5-20.4 17.8-24.2l448-160c11.6-4.1 24.5-1.1 32.9 7.8z",
+  },
+};
+
+function NotificationTypeIcon({ type }) {
+  const icon = NOTIFICATION_ICONS[type] || {
+    viewBox: "0 0 448 512",
+    path: "M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 130.6 64 208v87.9c0 18.6-6.5 36.6-18.3 51L7.4 395.8C2.6 402 0 409.6 0 417.5C0 434.3 13.7 448 30.5 448h387c16.8 0 30.5-13.7 30.5-30.5c0-7.9-2.6-15.5-7.4-21.7l-38.3-48.9c-11.8-14.4-18.3-32.4-18.3-51V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zM176 480a48 48 0 1 0 96 0h-96z",
+  };
+
+  return (
+    <svg viewBox={icon.viewBox} fill="currentColor" aria-hidden="true" className="h-5 w-5">
+      <path d={icon.path} />
+    </svg>
+  );
+}
+
+function getRealtimeNotificationKey(notification) {
+  const payload = notification?.payload && typeof notification.payload === "object"
+    ? notification.payload
+    : {};
+  if (notification?.type === "follow" || notification?.type === "follow_request") {
+    return payload.from_user_id ? `${notification.type}:${payload.from_user_id}` : notification.id;
+  }
+  if (notification?.type === "group_join_request") {
+    return `${notification.type}:${payload.group_id || ""}:${payload.requester_id || payload.requester_user_id || ""}`;
+  }
+  if (notification?.type === "group_invitation") {
+    return `${notification.type}:${payload.group_id || notification.id}`;
+  }
+  return notification?.id || `${notification?.type || "notification"}:${Date.now()}`;
+}
+
 function normalizeImagePath(imagePath) {
   const value = String(imagePath || "").trim();
 
@@ -462,16 +514,20 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthResolved, setIsAuthResolved] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationPulse, setNotificationPulse] = useState(null);
+  const [isNotificationPulseLeaving, setIsNotificationPulseLeaving] = useState(false);
   const notifSocketRef = useRef(null);
+  const lastNotificationPulseRef = useRef({ key: "", time: 0 });
 
   const showNav = pathname && pathname !== "/" && !pathname.startsWith("/auth");
   const isMessagesRoute = pathname === "/messages";
   const isPostsRoute = pathname === "/posts";
-  const hidesFloatingNavButton = isMessagesRoute || pathname === "/notifications" || pathname === "/groups";
+  const hidesFloatingNavButton = isMessagesRoute || pathname === "/notifications";
   const activeQuery = searchParams.get("q") ?? "";
   const sourceQuery = searchParams.get("source") ?? "";
   const modeQuery = searchParams.get("mode") ?? "";
@@ -482,7 +538,7 @@ export default function AppShell({ children }) {
 
   // Fetch initial unread notification count
   useEffect(() => {
-    if (!showNav) {
+    if (!showNav || !isAuthResolved || !currentUser?.id) {
       setUnreadCount(0);
       return;
     }
@@ -503,11 +559,14 @@ export default function AppShell({ children }) {
     return () => {
       ignore = true;
     };
-  }, [showNav]);
+  }, [currentUser?.id, isAuthResolved, showNav]);
 
   // WebSocket: listen for notification:new to increment badge in real time
   useEffect(() => {
-    if (!showNav) return;
+    if (!showNav || !isAuthResolved || !currentUser?.id) return;
+
+    let disposed = false;
+    let reconnectTimeoutId = null;
 
     function connect() {
       const wsUrl = buildWebSocketUrl(API_BASE_URL);
@@ -520,7 +579,26 @@ export default function AppShell({ children }) {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "notification:new") {
-            setUnreadCount((prev) => prev + 1);
+            fetch(`${API_BASE_URL}/api/notifications/unread-count`, { credentials: "include" })
+              .then((response) => response.json().catch(() => null))
+              .then((payload) => {
+                if (payload?.success) setUnreadCount(payload.data?.count ?? 0);
+              })
+              .catch(() => {});
+
+            const nextNotification = msg.data || {};
+            const nextKey = getRealtimeNotificationKey(nextNotification);
+            const now = Date.now();
+            const isRapidDuplicate =
+              lastNotificationPulseRef.current.key === nextKey &&
+              now - lastNotificationPulseRef.current.time < 10000;
+            lastNotificationPulseRef.current = { key: nextKey, time: now };
+            if (!isRapidDuplicate) {
+              setNotificationPulse(nextNotification);
+              setIsNotificationPulseLeaving(false);
+            }
+          } else if (msg.type === "user:status" && msg.data) {
+            window.dispatchEvent(new CustomEvent("social:presence", { detail: msg.data }));
           }
         } catch {}
       };
@@ -528,8 +606,11 @@ export default function AppShell({ children }) {
       socket.onclose = () => {
         notifSocketRef.current = null;
         // Reconnect after 5s if still on the page
-        setTimeout(() => {
-          if (notifSocketRef.current === null) connect();
+        reconnectTimeoutId = window.setTimeout(async () => {
+          if (disposed || notifSocketRef.current !== null) return;
+          const response = await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: "include" }).catch(() => null);
+          if (response?.ok && !disposed) connect();
+          else if (!disposed) setCurrentUser(null);
         }, 5000);
       };
     }
@@ -537,6 +618,8 @@ export default function AppShell({ children }) {
     connect();
 
     return () => {
+      disposed = true;
+      if (reconnectTimeoutId) window.clearTimeout(reconnectTimeoutId);
       const s = notifSocketRef.current;
       if (s) {
         s.onclose = null;
@@ -544,14 +627,32 @@ export default function AppShell({ children }) {
         notifSocketRef.current = null;
       }
     };
-  }, [showNav]);
+  }, [currentUser?.id, isAuthResolved, showNav]);
 
   // Reset badge when user visits the notifications page
   useEffect(() => {
     if (pathname === "/notifications") {
       setUnreadCount(0);
+      setNotificationPulse(null);
+      setIsNotificationPulseLeaving(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (!notificationPulse) {
+      return;
+    }
+
+    const leaveTimeoutId = window.setTimeout(() => setIsNotificationPulseLeaving(true), 4400);
+    const removeTimeoutId = window.setTimeout(() => {
+      setNotificationPulse(null);
+      setIsNotificationPulseLeaving(false);
+    }, 4850);
+    return () => {
+      window.clearTimeout(leaveTimeoutId);
+      window.clearTimeout(removeTimeoutId);
+    };
+  }, [notificationPulse]);
 
   useEffect(() => {
     function handleOpenNav() {
@@ -572,10 +673,12 @@ export default function AppShell({ children }) {
   useEffect(() => {
     if (!showNav) {
       setCurrentUser(null);
+      setIsAuthResolved(true);
       return;
     }
 
     let ignore = false;
+    setIsAuthResolved(false);
 
     async function fetchCurrentUser() {
       try {
@@ -594,6 +697,8 @@ export default function AppShell({ children }) {
         if (!ignore) {
           setCurrentUser(null);
         }
+      } finally {
+        if (!ignore) setIsAuthResolved(true);
       }
     }
 
@@ -662,7 +767,28 @@ export default function AppShell({ children }) {
         aria-label="Open navigation"
       >
         <MenuIcon />
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#fe2c55] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-black">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        ) : null}
       </button>
+
+      {notificationPulse && unreadCount > 0 && !isNavOpen ? (
+        <Link
+          key={getRealtimeNotificationKey(notificationPulse)}
+          href="/notifications"
+          className={`${isNotificationPulseLeaving ? "notification-toast-exit" : "notification-toast-enter"} fixed left-1/2 top-4 z-[70] flex w-[min(92vw,440px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-white/12 bg-[#171717]/96 px-4 py-3 text-left text-sm text-white shadow-[0_20px_65px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-colors duration-300 hover:bg-[#202020]`}
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fe2c55]/15 text-[#ff6b89]">
+            <NotificationTypeIcon type={notificationPulse.type} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#fe2c55]">New notification</span>
+            <span className="mt-1 block truncate text-white/78">{notificationPulse.title || notificationPulse.message || "Open notifications"}</span>
+          </span>
+        </Link>
+      ) : null}
 
       {isNavOpen ? (
         <div

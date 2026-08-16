@@ -50,24 +50,6 @@ export default function UserProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function fetchSentFollowRequestState(targetUserId) {
-    const response = await fetch(`${API_BASE_URL}/api/follow-requests/sent?limit=100`, {
-      method: "GET",
-      credentials: "include",
-    });
-    const payload = await parseResponse(response);
-
-    if (!response.ok || !payload?.success) {
-      throw new Error(payload?.error || "Failed to load sent follow requests");
-    }
-
-    const requests = payload?.data?.requests || [];
-
-    return requests.some(
-      (request) => request?.target_id === targetUserId && request?.status === "pending"
-    );
-  }
-
   async function fetchBlockedProfileFallback(targetUserId) {
     const response = await fetch(`${API_BASE_URL}/api/blocks?limit=100`, {
       method: "GET",
@@ -124,19 +106,12 @@ export default function UserProfilePage() {
         return;
       }
 
-      const [profileResponse, postsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/users/${userId}`, {
-          method: "GET",
-          credentials: "include",
-        }),
-        fetch(`${API_BASE_URL}/api/users/${userId}/posts?limit=50`, {
-          method: "GET",
-          credentials: "include",
-        }),
-      ]);
+      const profileResponse = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        method: "GET",
+        credentials: "include",
+      });
 
       const profilePayload = await parseResponse(profileResponse);
-      const postsPayload = await parseResponse(postsResponse);
 
       if (!profileResponse.ok || !profilePayload?.success || !profilePayload?.data) {
         if (profileResponse.status === 401 && !nextCurrentUser) {
@@ -156,23 +131,29 @@ export default function UserProfilePage() {
       }
 
       const isBlocked = Boolean(profilePayload.data.is_blocked);
-      if (!isBlocked && (!postsResponse.ok || !postsPayload?.success)) {
-        throw new Error(postsPayload?.error || "Failed to load user posts");
-      }
+      const isContentLocked =
+        !isBlocked &&
+        !profilePayload.data.is_public &&
+        Number(profilePayload.data.is_following) !== 1;
+      let nextPosts = [];
 
-      let nextHasPendingFollowRequest = false;
-
-      if (nextCurrentUser && !profilePayload.data.is_public && Number(profilePayload.data.is_following) !== 1) {
-        try {
-          nextHasPendingFollowRequest = await fetchSentFollowRequestState(userId);
-        } catch {
-          nextHasPendingFollowRequest = false;
+      if (!isBlocked && !isContentLocked) {
+        const postsResponse = await fetch(`${API_BASE_URL}/api/users/${userId}/posts?limit=50`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const postsPayload = await parseResponse(postsResponse);
+        if (!postsResponse.ok || !postsPayload?.success) {
+          throw new Error(postsPayload?.error || "Failed to load user posts");
         }
+        nextPosts = postsPayload?.data?.posts || [];
       }
+
+      const nextHasPendingFollowRequest = Number(profilePayload.data.is_follow_request_pending) === 1;
 
       setCurrentUser(nextCurrentUser);
       setProfile(profilePayload.data);
-      setPosts(isBlocked ? [] : postsPayload?.data?.posts || []);
+      setPosts(nextPosts);
       setHasPendingFollowRequest(nextHasPendingFollowRequest);
     } catch (error) {
       setCurrentUser(null);
@@ -186,7 +167,12 @@ export default function UserProfilePage() {
   }
 
   async function fetchRepostPosts() {
-    if (!userId) {
+    if (
+      !userId ||
+      (!profile?.is_public && Number(profile?.is_following) !== 1)
+    ) {
+      setRepostPosts([]);
+      setHasLoadedRepostPosts(true);
       return;
     }
 
@@ -234,6 +220,13 @@ export default function UserProfilePage() {
     if (!currentUser?.id) {
       router.push("/auth/login");
       return;
+    }
+
+    if (Number(profile.is_following) === 1) {
+      const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.nickname || "this user";
+      if (!window.confirm(`Unfollow ${displayName}?`)) {
+        return;
+      }
     }
 
     setIsFollowActionLoading(true);
@@ -429,6 +422,18 @@ export default function UserProfilePage() {
     loadProfilePage();
 
   }, [router, userId]);
+
+  useEffect(() => {
+    function handlePresenceChange(event) {
+      if (event.detail?.user_id !== userId || !event.detail?.status) return;
+      setProfile((currentProfile) =>
+        currentProfile ? { ...currentProfile, status: event.detail.status } : currentProfile
+      );
+    }
+
+    window.addEventListener("social:presence", handlePresenceChange);
+    return () => window.removeEventListener("social:presence", handlePresenceChange);
+  }, [userId]);
 
   useEffect(() => {
     setActiveTab("posts");

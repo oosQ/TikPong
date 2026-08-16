@@ -80,6 +80,7 @@ func ListSentInvitations(userID, cursor string, limit int) (*dto.ListSentInvitat
 			gi.invitee_id,
 			u.nickname,
 			COALESCE(u.avatar_path, ''),
+			COALESCE(u.status, 'offline'),
 			gi.created_at
 		FROM group_invitations gi
 		JOIN groups g ON g.id = gi.group_id
@@ -118,6 +119,7 @@ func ListSentInvitations(userID, cursor string, limit int) (*dto.ListSentInvitat
 			&item.InviteeID,
 			&item.InviteeNickname,
 			&item.AvatarPath,
+			&item.InviteeStatus,
 			&item.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -152,6 +154,7 @@ func ListReceivedInvitations(userID, cursor string, limit int) (*dto.ListReceive
 			gi.inviter_id,
 			u.nickname,
 			COALESCE(u.avatar_path, ''),
+			COALESCE(u.status, 'offline'),
 			gi.created_at
 		FROM group_invitations gi
 		JOIN groups g ON g.id = gi.group_id
@@ -190,6 +193,7 @@ func ListReceivedInvitations(userID, cursor string, limit int) (*dto.ListReceive
 			&item.InviterID,
 			&item.InviterNickname,
 			&item.AvatarPath,
+			&item.InviterStatus,
 			&item.CreatedAt,
 		); err != nil {
 			return nil, err

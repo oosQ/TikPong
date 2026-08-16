@@ -14,6 +14,17 @@ function parseHashtags(input) {
     .filter(Boolean);
 }
 
+function buildPostForm(post) {
+  return {
+    title: post?.title || "",
+    content: post?.content || "",
+    privacy: post?.privacy || "public",
+    hashtags: (post?.hashtags || []).map((tag) => `#${tag}`).join(" "),
+    image: null,
+    removeImage: false,
+  };
+}
+
 export default function PostEditModal({
   post,
   isSubmitting,
@@ -21,37 +32,29 @@ export default function PostEditModal({
   onClose,
   onSubmit,
 }) {
-  const [form, setForm] = useState({
-    title: "",
-    content: "",
-    privacy: "public",
-    hashtags: "",
-    image: null,
-    removeImage: false,
-  });
-  const [selectedViewers, setSelectedViewers] = useState([]);
+  const [form, setForm] = useState(() => buildPostForm(post));
+  const [selectedViewers, setSelectedViewers] = useState(() => post?.allowed_viewers || []);
   const [followers, setFollowers] = useState([]);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [followerSearch, setFollowerSearch] = useState("");
 
   useEffect(() => {
     if (!post) return;
-    setForm({
-      title: post.title || "",
-      content: post.content || "",
-      privacy: post.privacy || "public",
-      hashtags: (post.hashtags || []).map((tag) => `#${tag}`).join(" "),
-      image: null,
-      removeImage: false,
+    queueMicrotask(() => {
+      setForm(buildPostForm(post));
+      setSelectedViewers(post.allowed_viewers || []);
     });
-    setSelectedViewers(post.allowed_viewers || []);
   }, [post]);
 
   // Fetch followers when privacy is "private"
   useEffect(() => {
     if (form.privacy !== "private") return;
     let ignore = false;
-    setIsLoadingFollowers(true);
+    queueMicrotask(() => {
+      if (!ignore) {
+        setIsLoadingFollowers(true);
+      }
+    });
 
     fetch(`${API_BASE_URL}/api/followers?limit=100`, { credentials: "include" })
       .then((r) => r.json().catch(() => null))

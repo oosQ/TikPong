@@ -23,6 +23,12 @@ func CreateAndDispatch(userID, notificationType, title, message string, payload 
 		payloadText = &text
 	}
 
+	if notificationType == "follow" || notificationType == "follow_request" || notificationType == "group_join_request" || notificationType == "group_invitation" {
+		if err := repo.DeleteUnreadMatchingNotifications(userID, notificationType, payloadText); err != nil {
+			return err
+		}
+	}
+
 	err = repo.CreateNotification(notificationID, userID, notificationType, title, message, payloadText)
 	if err != nil {
 		return err

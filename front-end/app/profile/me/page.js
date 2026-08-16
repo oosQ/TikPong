@@ -462,6 +462,13 @@ export default function MyProfilePage() {
   }
 
   async function handleEditProfileSubmit() {
+    if (profile && Boolean(profile.is_public) !== Boolean(editForm.isPublic)) {
+      const nextVisibility = editForm.isPublic ? "public" : "private";
+      if (!window.confirm(`Change your profile to ${nextVisibility}?`)) {
+        return;
+      }
+    }
+
     setIsEditProfileSubmitting(true);
     setEditProfileError("");
 

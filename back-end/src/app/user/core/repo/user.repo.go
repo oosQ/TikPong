@@ -25,14 +25,14 @@ func GetUserDisplayName(userID string) string {
 }
 
 func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
-	var Nickname, FirstName, LastName, AboutMe sql.NullString
+	var Nickname, FirstName, LastName, AboutMe, Status sql.NullString
 	var AvatarPath sql.NullString
 	var IsPublic int
 	err := database.DB.QueryRow(`
-		SELECT id, COALESCE(nickname, ''), COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(about_me, ''), COALESCE(avatar_path, ''), is_public
+		SELECT id, COALESCE(nickname, ''), COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(about_me, ''), COALESCE(avatar_path, ''), COALESCE(status, 'offline'), is_public
 		FROM users
 		WHERE id = ?
-	`, userID).Scan(&userID, &Nickname, &FirstName, &LastName, &AboutMe, &AvatarPath, &IsPublic)
+	`, userID).Scan(&userID, &Nickname, &FirstName, &LastName, &AboutMe, &AvatarPath, &Status, &IsPublic)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -46,6 +46,7 @@ func GetUserByID(userID string) (*dto.UserProfileResponse, error) {
 		LastName:   LastName.String,
 		AboutMe:    AboutMe.String,
 		AvatarPath: AvatarPath.String,
+		Status:     Status.String,
 		IsPublic:   IsPublic == 1,
 	}, nil
 }
@@ -55,7 +56,11 @@ func GetUserProfileByID(userID, currentUserID string) (*dto.UserProfileResponse,
 	var isBlocked int
 	err := database.DB.QueryRow(`
 		SELECT u.id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.about_me, ''), COALESCE(u.avatar_path, ''),
-		       u.is_public, COALESCE(CASE WHEN f.follower_id IS NOT NULL THEN 1 ELSE 0 END, 0),
+		       COALESCE(u.status, 'offline'), u.is_public, COALESCE(CASE WHEN f.follower_id IS NOT NULL THEN 1 ELSE 0 END, 0),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follow_requests fr
+			       WHERE fr.requester_id = ? AND fr.target_id = u.id AND fr.status = 'pending'
+		       ) THEN 1 ELSE 0 END,
 		       COALESCE(CASE WHEN blocked_by_me.blocker_id IS NOT NULL THEN 1 ELSE 0 END, 0),
 		       COALESCE(us.total_posts, 0), COALESCE(us.total_followers, 0), COALESCE(us.total_following, 0), u.created_at
 		FROM users u
@@ -67,9 +72,9 @@ func GetUserProfileByID(userID, currentUserID string) (*dto.UserProfileResponse,
 			SELECT 1 FROM user_blocks ub
 			WHERE ub.blocker_id = u.id AND ub.blocked_id = ?
 		)
-	`, currentUserID, currentUserID, userID, currentUserID).Scan(
-		&u.ID, &u.Nickname, &u.FirstName, &u.LastName, &u.AboutMe, &u.AvatarPath,
-		&isPublic, &u.IsFollowing, &isBlocked, &u.TotalPosts, &u.TotalFollowers, &u.TotalFollowing, &u.CreatedAt,
+	`, currentUserID, currentUserID, currentUserID, userID, currentUserID).Scan(
+		&u.ID, &u.Nickname, &u.FirstName, &u.LastName, &u.AboutMe, &u.AvatarPath, &u.Status,
+		&isPublic, &u.IsFollowing, &u.IsFollowRequestPending, &isBlocked, &u.TotalPosts, &u.TotalFollowers, &u.TotalFollowing, &u.CreatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -112,7 +117,12 @@ func UpdateUserAvatar(userID, avatarPath string) error {
 func SearchUsers(currentUserID, query, cursor string, limit int) (*dto.SearchUsersResponse, error) {
 	searchPattern := "%" + query + "%"
 	queryStr := `
-		SELECT u.id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.avatar_path, ''), u.is_public
+		SELECT u.id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.avatar_path, ''), COALESCE(u.status, 'offline'), u.is_public,
+		       CASE WHEN EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = u.id) THEN 1 ELSE 0 END,
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follow_requests fr
+			       WHERE fr.requester_id = ? AND fr.target_id = u.id AND fr.status = 'pending'
+		       ) THEN 1 ELSE 0 END
 		FROM users u
 		WHERE (LOWER(u.nickname) LIKE LOWER(?) OR LOWER(u.first_name) LIKE LOWER(?) OR LOWER(u.last_name) LIKE LOWER(?))
 		AND u.id != ?
@@ -126,7 +136,7 @@ func SearchUsers(currentUserID, query, cursor string, limit int) (*dto.SearchUse
 		LIMIT ?
 	`
 
-	rows, err := database.DB.Query(queryStr, searchPattern, searchPattern, searchPattern, currentUserID, currentUserID, currentUserID, cursor, cursor, limit+1)
+	rows, err := database.DB.Query(queryStr, currentUserID, currentUserID, searchPattern, searchPattern, searchPattern, currentUserID, currentUserID, currentUserID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +146,7 @@ func SearchUsers(currentUserID, query, cursor string, limit int) (*dto.SearchUse
 	for rows.Next() {
 		var u dto.UserSearchResult
 		var isPublic int
-		if err := rows.Scan(&u.ID, &u.Nickname, &u.FirstName, &u.LastName, &u.AvatarPath, &isPublic); err != nil {
+		if err := rows.Scan(&u.ID, &u.Nickname, &u.FirstName, &u.LastName, &u.AvatarPath, &u.Status, &isPublic, &u.IsFollowing, &u.IsFollowRequestPending); err != nil {
 			return nil, err
 		}
 		u.IsPublic = isPublic == 1
@@ -157,8 +167,12 @@ func SearchUsers(currentUserID, query, cursor string, limit int) (*dto.SearchUse
 
 func GetUsers(currentUserID, cursor string, limit int) (*dto.GetUsersResponse, error) {
 	rows, err := database.DB.Query(`
-		SELECT u.id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.avatar_path, ''), u.is_public,
-		       COALESCE(CASE WHEN f.follower_id IS NOT NULL THEN 1 ELSE 0 END, 0)
+		SELECT u.id, COALESCE(u.nickname, ''), COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.avatar_path, ''), COALESCE(u.status, 'offline'), u.is_public,
+		       COALESCE(CASE WHEN f.follower_id IS NOT NULL THEN 1 ELSE 0 END, 0),
+		       CASE WHEN EXISTS (
+			       SELECT 1 FROM follow_requests fr
+			       WHERE fr.requester_id = ? AND fr.target_id = u.id AND fr.status = 'pending'
+		       ) THEN 1 ELSE 0 END
 		FROM users u
 		LEFT JOIN follows f ON f.follower_id = ? AND f.following_id = u.id
 		WHERE u.id != ?
@@ -170,7 +184,7 @@ func GetUsers(currentUserID, cursor string, limit int) (*dto.GetUsersResponse, e
 		AND (? = '' OR u.id < ?)
 		ORDER BY u.id DESC
 		LIMIT ?
-	`, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, limit+1)
+	`, currentUserID, currentUserID, currentUserID, currentUserID, currentUserID, cursor, cursor, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +194,7 @@ func GetUsers(currentUserID, cursor string, limit int) (*dto.GetUsersResponse, e
 	for rows.Next() {
 		var user dto.UserListItem
 		var isPublic int
-		if err := rows.Scan(&user.ID, &user.Nickname, &user.FirstName, &user.LastName, &user.AvatarPath, &isPublic, &user.IsFollowing); err != nil {
+		if err := rows.Scan(&user.ID, &user.Nickname, &user.FirstName, &user.LastName, &user.AvatarPath, &user.Status, &isPublic, &user.IsFollowing, &user.IsFollowRequestPending); err != nil {
 			return nil, err
 		}
 		user.IsPublic = isPublic == 1

@@ -20,7 +20,7 @@ func AcceptFollowRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := services.AcceptFollowRequest(fromUserID, userCtx.ID)
+	err := services.AcceptFollowRequest(userCtx.ID, fromUserID)
 	if err != nil {
 		utils.SendError(w, err.Error(), http.StatusBadRequest)
 		return

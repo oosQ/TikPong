@@ -8,6 +8,23 @@ import (
 	"time"
 )
 
+func CanViewUserContent(userID, currentUserID string) (bool, error) {
+	var allowed int
+	err := database.DB.QueryRow(`
+		SELECT CASE
+			WHEN u.is_public = 1 OR u.id = ? OR EXISTS (
+				SELECT 1 FROM follows f
+				WHERE f.follower_id = ? AND f.following_id = u.id
+			) THEN 1 ELSE 0 END
+		FROM users u
+		WHERE u.id = ?
+	`, currentUserID, currentUserID, userID).Scan(&allowed)
+	if err != nil {
+		return false, err
+	}
+	return allowed == 1, nil
+}
+
 func PostExists(postID string) (bool, error) {
 	var count int
 	err := database.DB.QueryRow(`SELECT COUNT(*) FROM posts WHERE id = ?`, postID).Scan(&count)
