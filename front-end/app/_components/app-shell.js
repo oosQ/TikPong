@@ -320,15 +320,16 @@ function LeftNavBar({
   unreadNotificationCount,
   variant = "desktop",
   onClose,
+  animationClassName = "",
 }) {
   const isSearchActive = pathname === "/posts" && Boolean(activeQuery);
   const isMobile = variant === "mobile";
   const asideClassName = isMobile
-    ? "theme-scrollbar fixed inset-y-0 left-0 z-50 flex w-[268px] max-w-[calc(100vw-24px)] flex-col overflow-y-auto border-r border-white/10 bg-[linear-gradient(180deg,#090909_0%,#050505_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(0,0,0,0.55)]"
+    ? `theme-scrollbar fixed inset-y-0 left-0 z-50 flex w-[268px] max-w-[calc(100vw-24px)] flex-col overflow-y-auto border-r border-white/10 bg-[linear-gradient(180deg,#090909_0%,#050505_100%)] px-5 py-6 text-white shadow-[0_24px_70px_rgba(0,0,0,0.55)] ${animationClassName}`
     : "theme-scrollbar fixed inset-y-0 left-0 z-30 hidden w-[268px] overflow-y-auto border-r border-white/10 bg-[linear-gradient(180deg,#090909_0%,#050505_100%)] px-5 py-6 text-white min-[1200px]:flex min-[1200px]:flex-col";
 
   return (
-    <aside className={asideClassName}>
+    <aside className={asideClassName} onClick={isMobile ? (event) => event.stopPropagation() : undefined}>
       {isMobile ? (
         <div className="mb-4 flex items-center justify-end">
           <button
@@ -517,12 +518,14 @@ export default function AppShell({ children }) {
   const [isAuthResolved, setIsAuthResolved] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isNavClosing, setIsNavClosing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationPulse, setNotificationPulse] = useState(null);
   const [isNotificationPulseLeaving, setIsNotificationPulseLeaving] = useState(false);
   const notifSocketRef = useRef(null);
   const lastNotificationPulseRef = useRef({ key: "", time: 0 });
+  const navCloseTimeoutRef = useRef(null);
 
   const showNav = pathname && pathname !== "/" && !pathname.startsWith("/auth");
   const isMessagesRoute = pathname === "/messages";
@@ -656,6 +659,8 @@ export default function AppShell({ children }) {
 
   useEffect(() => {
     function handleOpenNav() {
+      if (navCloseTimeoutRef.current) window.clearTimeout(navCloseTimeoutRef.current);
+      setIsNavClosing(false);
       setIsNavOpen(true);
     }
 
@@ -667,8 +672,30 @@ export default function AppShell({ children }) {
   }, []);
 
   useEffect(() => {
+    if (navCloseTimeoutRef.current) window.clearTimeout(navCloseTimeoutRef.current);
+    setIsNavClosing(false);
     setIsNavOpen(false);
   }, [pathname, searchParams]);
+
+  useEffect(() => () => {
+    if (navCloseTimeoutRef.current) window.clearTimeout(navCloseTimeoutRef.current);
+  }, []);
+
+  function openNavigation() {
+    if (navCloseTimeoutRef.current) window.clearTimeout(navCloseTimeoutRef.current);
+    setIsNavClosing(false);
+    setIsNavOpen(true);
+  }
+
+  function closeNavigation() {
+    if (!isNavOpen || isNavClosing) return;
+    setIsNavClosing(true);
+    navCloseTimeoutRef.current = window.setTimeout(() => {
+      setIsNavOpen(false);
+      setIsNavClosing(false);
+      navCloseTimeoutRef.current = null;
+    }, 260);
+  }
 
   useEffect(() => {
     if (!showNav) {
@@ -760,7 +787,7 @@ export default function AppShell({ children }) {
     <div className="min-h-screen bg-black text-white">
       <button
         type="button"
-        onClick={() => setIsNavOpen(true)}
+        onClick={openNavigation}
         className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#161616]/92 text-white shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-sm transition hover:bg-[#202020] min-[1200px]:hidden ${
           hidesFloatingNavButton ? "hidden" : isPostsRoute ? "left-4 top-20" : "left-4 top-4"
         }`}
@@ -794,27 +821,26 @@ export default function AppShell({ children }) {
 
       {isNavOpen ? (
         <div
-          className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm min-[1200px]:hidden"
-          onClick={() => setIsNavOpen(false)}
+          className={`${isNavClosing ? "mobile-nav-backdrop-exit" : "mobile-nav-backdrop-enter"} fixed inset-0 z-40 bg-black/55 backdrop-blur-sm min-[1200px]:hidden`}
+          onClick={closeNavigation}
         >
-          <div onClick={(event) => event.stopPropagation()}>
-            <LeftNavBar
-              pathname={pathname}
-              currentUser={currentUser}
-              isLoggingOut={isLoggingOut}
-              onLogout={handleLogout}
-              searchInput={searchInput}
-              onSearchInputChange={setSearchInput}
-              onSearchSubmit={handleSearchSubmit}
-              onSearchClear={handleSearchClear}
-              activeQuery={activeQuery}
-              sourceQuery={sourceQuery}
-              modeQuery={modeQuery}
-              unreadNotificationCount={unreadCount}
-              variant="mobile"
-              onClose={() => setIsNavOpen(false)}
-            />
-          </div>
+          <LeftNavBar
+            pathname={pathname}
+            currentUser={currentUser}
+            isLoggingOut={isLoggingOut}
+            onLogout={handleLogout}
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            onSearchSubmit={handleSearchSubmit}
+            onSearchClear={handleSearchClear}
+            activeQuery={activeQuery}
+            sourceQuery={sourceQuery}
+            modeQuery={modeQuery}
+            unreadNotificationCount={unreadCount}
+            variant="mobile"
+            onClose={closeNavigation}
+            animationClassName={isNavClosing ? "mobile-nav-panel-exit" : "mobile-nav-panel-enter"}
+          />
         </div>
       ) : null}
 

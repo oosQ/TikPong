@@ -8,10 +8,7 @@ const API_BASE_URL =
 
 async function parseResponse(response) {
   const text = await response.text();
-  if (!text) {
-    return null;
-  }
-
+  if (!text) return null;
   try {
     return JSON.parse(text);
   } catch {
@@ -21,100 +18,105 @@ async function parseResponse(response) {
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setIsSubmitting(true);
     setErrorMessage("");
     setSuccessMessage("");
 
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setEmailError("Enter the email address for your account.");
+      document.getElementById("email")?.focus();
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setEmailError("Enter a valid email, such as name@example.com.");
+      document.getElementById("email")?.focus();
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
-
       const payload = await parseResponse(response);
       if (!response.ok || !payload?.success) {
-        setErrorMessage(payload?.error || "Failed to send reset email");
+        const message = payload?.error || "We could not send a reset email.";
+        if (/email/i.test(message)) setEmailError(message);
+        else setErrorMessage(message);
         return;
       }
 
-      setSuccessMessage(payload?.message || "Password reset email sent successfully");
+      setSuccessMessage(payload?.message || "Check your inbox for a password reset link.");
       setEmail("");
     } catch {
-      setErrorMessage("Could not connect to the backend server");
+      setErrorMessage("We could not reach the server. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white sm:px-6 lg:px-8">
-      <div className="w-full max-w-xl rounded-[32px] border border-white/10 bg-white/[0.03] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur sm:p-10">
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/40">
-            TikPong
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-            Forgot password
-          </h1>
-          <p className="mt-2 text-sm text-white/55">
-            Enter your account email and we will send you a password reset link.
-          </p>
-          <p className="mt-4 text-sm text-white/50">
-            Remembered your password?{" "}
-            <Link href="/auth/login" className="font-semibold text-white transition hover:text-[#fe2c55]">
-              Back to login
-            </Link>
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <main className="auth-page px-4 text-white sm:px-6 lg:px-8">
+      <div className="auth-orb auth-orb-one" />
+      <div className="auth-orb auth-orb-two" />
+      <section className="auth-card auth-card-enter relative z-10 grid w-full max-w-5xl overflow-hidden lg:grid-cols-[0.9fr_1.1fr]">
+        <aside className="auth-card-aside hidden min-h-[600px] flex-col justify-between p-10 lg:flex">
+          <Link href="/auth" className="text-5xl font-bold tracking-[-0.02em]">Tik<span className="text-[#ff8da4]">Pong</span></Link>
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-white/72">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              placeholder="hussain@example.com"
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-white/25"
-              required
-            />
+            <h1 className="mt-7 max-w-sm text-4xl font-semibold leading-[1.12] tracking-[-0.04em]">Let&apos;s get you back in.</h1>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-white/60">We will send a secure reset link to the email connected to your account.</p>
           </div>
+          <p className="text-xs text-white/35"></p>
+        </aside>
 
-          {errorMessage ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {errorMessage}
-            </div>
-          ) : null}
+        <div className="flex min-h-[500px] items-center bg-[#0d0d10]/92 p-6 sm:p-5 lg:p-14">
+          <div className=" w-full max-w-md">
+            <p className="mb-9 text-4xl font-bold lg:hidden">Tik<span className="text-[#ff5275]">Pong</span></p>
+            <p className="text-xl font-semibold text-[#ff6b89]">Need help?</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em]">Forgot password</h2>
+            <p className="mt-3 text-sm leading-6 text-white/50">Remembered it? <Link href="/auth/login" className="font-semibold text-white transition hover:text-[#ff5275] underline">Back to sign in</Link></p>
 
-          {successMessage ? (
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-              {successMessage}
-            </div>
-          ) : null}
+            <form onSubmit={handleSubmit} noValidate className="mt-9 space-y-5">
+              <div>
+                <label htmlFor="email" className="auth-label">Email address</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setEmailError("");
+                    setErrorMessage("");
+                  }}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  aria-invalid={Boolean(emailError)}
+                  aria-describedby={emailError ? "email-error" : undefined}
+                  className={`auth-input ${emailError ? "auth-input-invalid" : ""}`}
+                />
+                {emailError ? <p id="email-error" className="auth-field-error" role="alert"><span>!</span>{emailError}</p> : null}
+              </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-2xl bg-[#fe2c55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isSubmitting ? "Sending..." : "Send reset link"}
-          </button>
-        </form>
-      </div>
+              {errorMessage ? <div className="auth-alert auth-alert-error" role="alert">{errorMessage}</div> : null}
+              {successMessage ? <div className="auth-alert auth-alert-success" role="status">{successMessage}</div> : null}
+
+              <button type="submit" disabled={isSubmitting} className="auth-primary-button">
+                {isSubmitting ? <><span className="auth-button-spinner" />Sending link...</> : <>Send reset link</>}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

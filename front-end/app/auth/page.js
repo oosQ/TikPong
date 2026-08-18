@@ -2,43 +2,60 @@ import Link from "next/link";
 
 export default function AuthPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-4 py-10 text-white sm:px-6 lg:px-8">
-      <div className="w-full max-w-lg rounded-[32px] border border-white/10 bg-white/[0.03] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur sm:p-10">
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/40">
-            TikPong
+    <main className="auth-page px-4 text-white sm:px-6 lg:px-8">
+      <div className="auth-orb auth-orb-one" />
+      <div className="auth-orb auth-orb-two" />
+
+      <section className="auth-card auth-card-enter relative z-10 grid w-full max-w-5xl overflow-hidden lg:grid-cols-[1.05fr_0.95fr]">
+        <aside className="auth-card-aside hidden min-h-[620px] flex-col justify-between p-10 lg:flex">
+          <p className="font-bold text-5xl tracking-[-0.02em]">
+            Tik<span className="text-[#ff5275]">Pong</span>
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">
-            Welcome
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-white/55">
-            Join the network, sign in to your account, or continue as a guest to explore public content.
-          </p>
+
+          <div>
+            <h1 className="mt-7 max-w-md text-4xl font-semibold leading-[1.05] tracking-[-0.055em]">
+              Welcome to TikPong, a place to share and connect with others.
+            </h1>
+            <p className="mt-6 max-w-md text-sm leading-7 text-white/58">
+              Follow the people you care about, find communities that feel like home, and share at your own pace.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-white/40">
+            <p>© 2024 TikPong Reboot01 Project</p>
+          </div>
+        </aside>
+
+        <div className="flex min-h-[620px] items-center bg-[#0d0d10]/92 p-6 sm:p-10 lg:p-14">
+          <div className="mx-auto w-full max-w-md">
+            <p className="mb-12 text-sm font-bold tracking-[-0.02em] lg:hidden">
+              Tik<span className="text-[#ff5275]">Pong</span>
+            </p>
+
+            <p className="text-3xl font-semibold text-[#ff6b89]">Welcome</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-[-0.045em]">How would you like to continue?</h2>
+            <p className="mt-4 text-sm leading-6 text-white/48">
+              
+            </p>
+
+            <div className="mt-9 space-y-3">
+              <Link href="/auth/login" className="auth-primary-button">
+                Sign in
+              </Link>
+              <Link href="/auth/register" className="auth-secondary-button">
+                Create account
+              </Link>
+              <Link href="/posts" className="auth-guest-link">
+                Continue as guest
+              </Link>
+            </div>
+
+            <p className="mt-10 text-center text-xs leading-5 text-white/28">
+              Explore public posts without an account. You can join whenever you are ready.
+            </p>
+          </div>
         </div>
-
-        <div className="space-y-3">
-          <Link
-            href="/auth/login"
-            className="flex w-full items-center justify-center rounded-2xl bg-[#fe2c55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b]"
-          >
-            Login
-          </Link>
-
-          <Link
-            href="/auth/register"
-            className="flex w-full items-center justify-center rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            Register
-          </Link>
-
-          <Link
-            href="/posts"
-            className="flex w-full items-center justify-center rounded-2xl border border-dashed border-white/15 px-4 py-3 text-sm font-medium text-white/60 transition hover:bg-white/[0.04] hover:text-white"
-          >
-            Continue as guest
-          </Link>
-        </div>
-      </div>
+      </section>
     </main>
   );
 }

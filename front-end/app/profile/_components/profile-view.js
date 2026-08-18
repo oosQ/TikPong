@@ -880,7 +880,7 @@ export default function ProfileView({
                     {gridErrorMessage}
                   </div>
                 ) : displayedPosts.length === 0 ? (
-                  <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
+                  <div className="border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
                     {activeTab === "liked" ? "No liked posts yet." : activeTab === "reposts" ? "No reposts yet." : "No posts yet."}
                   </div>
                 ) : (
@@ -906,80 +906,87 @@ export default function ProfileView({
 
       {isSelf && isEditProfileOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+          className="profile-modal-backdrop theme-scrollbar fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 px-4 py-6 backdrop-blur-md sm:py-10"
           onClick={onEditProfileCancel}
         >
           <section
-            className="w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#111111] p-5 text-left shadow-[0_32px_80px_rgba(0,0,0,0.55)] sm:p-6"
+            className="profile-edit-modal my-auto w-full max-w-2xl rounded-[28px] border border-white/10 p-5 text-left shadow-[0_36px_100px_rgba(0,0,0,0.72)] sm:p-7"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-white">Edit profile</p>
-                <p className="mt-1 text-sm text-white/55">
-                  Update your public profile details.
-                </p>
+            <div className="flex items-start justify-between gap-4 border-b border-white/8 pb-6">
+              <div className="flex items-center gap-4">
+
+                <div>
+                  <p className="text-xl font-bold tracking-tight text-white">Edit profile</p>
+                  <p className="mt-1 text-sm text-white/50">
+                    Update your public profile details.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={onEditProfileCancel}
-                className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xl text-white/60 transition hover:rotate-90 hover:bg-white/10 hover:text-white"
+                aria-label="Close profile editor"
               >
-                Close
+                <span aria-hidden="true">×</span>
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-white/75">Nickname</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/50">Nickname</label>
                 <input
                   type="text"
                   value={editForm?.nickname || ""}
                   onChange={(event) => onEditFormChange("nickname", event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-white/30"
+                  className="profile-edit-input"
                 />
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <label className="flex items-start gap-3">
+              <label className="auth-privacy-card cursor-pointer rounded-2xl px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.055]">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-white">Public profile</span>
+                  <span className="mt-1 block text-xs leading-5 text-white/40">
+                    Anyone can view your posts. Turn this off to approve followers first.
+                  </span>
+                </span>
                   <input
                     type="checkbox"
                     checked={Boolean(editForm?.isPublic)}
                     onChange={(event) => onEditFormChange("isPublic", event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-white/20 bg-black text-[#fe2c55]"
+                    className="peer sr-only"
                   />
-                  <span>
-                    <span className="block text-sm font-medium text-white">Public profile</span>
-                    <span className="mt-1 block text-sm text-white/50">
-                      Let other users discover your profile and posts.
-                    </span>
-                  </span>
-                </label>
-              </div>
+                <span className="auth-switch" aria-hidden="true"><span /></span>
+              </label>
               <div>
-                <label className="mb-2 block text-sm font-medium text-white/75">First name</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/50">First name</label>
                 <input
                   type="text"
                   value={editForm?.firstName || ""}
                   onChange={(event) => onEditFormChange("firstName", event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-white/30"
+                  className="profile-edit-input"
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-white/75">Last name</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/50">Last name</label>
                 <input
                   type="text"
                   value={editForm?.lastName || ""}
                   onChange={(event) => onEditFormChange("lastName", event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-white/30"
+                  className="profile-edit-input"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-white/75">About me</label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-white/50">About me</label>
+                  <span className="text-xs text-white/30">{(editForm?.aboutMe || "").length}/500</span>
+                </div>
                 <textarea
                   value={editForm?.aboutMe || ""}
                   onChange={(event) => onEditFormChange("aboutMe", event.target.value)}
                   rows={4}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition focus:border-white/30"
+                  maxLength={500}
+                  className="profile-edit-input min-h-28 resize-none"
                 />
               </div>
             </div>
@@ -990,12 +997,12 @@ export default function ProfileView({
               </div>
             ) : null}
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-white/8 pt-5 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={onEditProfileSubmit}
                 disabled={isEditProfileSubmitting}
-                className="rounded-xl bg-[#fe2c55] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#e0264b] disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-[linear-gradient(135deg,#fe2c55,#d91f45)] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(254,44,85,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(254,44,85,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isEditProfileSubmitting ? "Saving..." : "Save changes"}
               </button>

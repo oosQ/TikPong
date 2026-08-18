@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"social-network/src/app/user/auth/services"
 	"social-network/src/middleware"
 )
@@ -12,6 +13,10 @@ func GoogleLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authURL := services.GetGoogleAuthURL()
+	authURL, err := services.GetGoogleAuthURL()
+	if err != nil {
+		http.Redirect(w, r, getFrontendURL()+"/auth/login?oauth_error="+url.QueryEscape(err.Error()), http.StatusFound)
+		return
+	}
 	http.Redirect(w, r, authURL, http.StatusFound)
 }

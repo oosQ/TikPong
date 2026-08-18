@@ -11,6 +11,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8433/api/auth/google/callback}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     volumes:
       - ./back-end/uploads:/app/uploads
       - ./back-end/data:/app/data

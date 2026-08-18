@@ -2522,14 +2522,7 @@ export default function GroupsPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleOpenGeneralSidebar}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/10 hover:text-white min-[1200px]:hidden"
-                  aria-label="Open general navigation"
-                >
-                  <MenuIcon />
-                </button>
+
                 <div>
                   <span className="text-[11px] uppercase tracking-[0.35em] text-white/40">Community</span>
                   <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Groups</h1>
@@ -2627,9 +2620,9 @@ export default function GroupsPage() {
                         {group.description || group.preview || "Browse this group"}
                       </p>
                     </div>
-                    <div className="flex w-full flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-4">
+                    <div className="flex w-full flex-wrap items-center justify-center gap-2  border-white/10 pt-4">
                       {groupMemberCount !== null ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-white/[0.06] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">
                           <MemberIcon />
                           {formatMemberCount(groupMemberCount)}
                         </span>
